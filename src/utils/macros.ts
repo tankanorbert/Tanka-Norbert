@@ -1,8 +1,3 @@
-type MacroResult = {
-  protein: { grams: number; calories: number; percent: number };
-  carbs: { grams: number; calories: number; percent: number };
-  fat: { grams: number; calories: number; percent: number };
-};
 
 export function calculateMacros(
   totalCalories: number,
