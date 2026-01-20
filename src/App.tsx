@@ -3,8 +3,6 @@ import "./App.css";
 
 import { calculateBMR, calculateTDEE, activityLevels } from "./utils/calorie";
 import { calculateMacros } from "./utils/macros";
-import { splitIntoMeals } from "./utils/meals";
-import type { MealMode } from "./utils/meals";
 
 import {MacroPie} from "./components/MacroPie";
 import FoodLogPanel from "./components/FoodLogPanel";
@@ -34,7 +32,6 @@ function App() {
   const [result, setResult] = useState<number | null>(null);
 
   const [goal, setGoal] = useState<"cut" | "maint" | "bulk">(loadGoal());
-  const [mealMode, setMealMode] = useState<MealMode>(4);
 
   const todayId = formatDateId(new Date());
   const [dateId, setDateId] = useState<string>(() => loadLastDateId() ?? todayId);
@@ -110,10 +107,6 @@ function App() {
     maintenanceCalories,
     maintenanceMacros,
   ]);
-
-  const mealPlan = useMemo(() => {
-    return selected ? splitIntoMeals(selected.calories, selected.macros, mealMode) : null;
-  }, [selected, mealMode]);
 
   const foodTarget = useMemo(() => {
     return selected
