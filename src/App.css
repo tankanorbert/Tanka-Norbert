@@ -1,93 +1,510 @@
-#root {
-  max-width: 1280px;
+:root{
+  --bg: #0b1220;
+  --panel: rgba(255,255,255,.06);
+  --panel2: rgba(255,255,255,.04);
+  --border: rgba(255,255,255,.10);
+  --text: rgba(255,255,255,.92);
+  --muted: rgba(255,255,255,.72);
+  --accent: #7c3aed;
+  --accent2: #22c55e;
+}
+
+* { box-sizing: border-box; }
+
+body{
+  margin:0;
+  background: radial-gradient(1200px 600px at 20% 0%, rgba(124,58,237,.25), transparent 55%),
+              radial-gradient(900px 500px at 90% 20%, rgba(34,197,94,.18), transparent 60%),
+              var(--bg);
+  color: var(--text);
+}
+
+.container{
+  max-width: 860px;
   margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+  padding: 14px;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+h1{
+  margin: 8px 0 14px;
+  font-size: 22px;
+  letter-spacing: .2px;
 }
 
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+h2{
+  margin: 0 0 10px;
+  font-size: 16px;
+  color: var(--text);
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
+hr{
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 12px 0;
 }
 
-.card {
-  padding: 2em;
+.panel{
+  background: linear-gradient(180deg, var(--panel), var(--panel2));
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 14px;
+  margin: 12px 0;
+  box-shadow: 0 12px 30px rgba(0,0,0,.22);
+  backdrop-filter: blur(10px);
 }
 
-.read-the-docs {
-  color: #888;
-}
-.container {
-  max-width: 420px;
-  margin: 0 auto;
-  padding: 24px;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont;
+.grid2{
+  display:grid;
+  gap: 10px;
+  grid-template-columns: 1fr 1fr;
 }
 
-h1 {
-  text-align: center;
-  margin-bottom: 24px;
+@media (max-width: 720px){
+  .grid2{ grid-template-columns: 1fr; }
+  .container{ padding: 12px; }
+  h1{ font-size: 20px; }
 }
 
-label {
-  display: flex;
-  flex-direction: column;
-  margin-bottom: 16px;
+label{
+  display:grid;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--muted);
+  text-align: left;
+}
+
+input, select{
+  width: 100%;
+  padding: 11px 12px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,.06);
+  color: var(--text);
+  outline: none;
+  font-size: 16px; /* iOS zoom fix */
+}
+
+input:focus, select:focus{
+  border-color: rgba(124,58,237,.65);
+  box-shadow: 0 0 0 4px rgba(124,58,237,.18);
+}
+
+button{
+  padding: 11px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,.08);
+  color: var(--text);
+  cursor: pointer;
+  font-weight: 600;
+}
+
+button:hover{
+  border-color: rgba(124,58,237,.55);
+}
+
+.btnPrimary{
+  background: linear-gradient(135deg, rgba(124,58,237,.95), rgba(124,58,237,.65));
+  border-color: rgba(124,58,237,.55);
+}
+
+.btnPrimary:hover{
+  filter: brightness(1.06);
+}
+
+.actionsRow{
+  display:flex;
+  gap:10px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.pills{
+  display:flex;
+  gap:8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.muted{
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.kpi{
+  display:grid;
+  gap:10px;
+  grid-template-columns: 1fr 1fr 1fr;
+  margin-top: 10px;
+}
+
+@media (max-width: 720px){
+  .kpi{ grid-template-columns: 1fr; }
+}
+
+.kpiCard{
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 12px;
+  background: rgba(255,255,255,.05);
+}
+
+.kpiTitle{ color: var(--muted); font-size: 12px; }
+.kpiValue{ font-size: 18px; font-weight: 800; margin-top: 4px; }
+
+/* --- Button variants / chips --- */
+.btnGhost{
+  background: rgba(255,255,255,.06);
+  border: 1px solid var(--border);
+}
+
+.btnGhost:hover{
+  border-color: rgba(124,58,237,.55);
+}
+
+.btnDanger{
+  background: linear-gradient(135deg, rgba(239,68,68,.95), rgba(239,68,68,.55));
+  border-color: rgba(239,68,68,.55);
+}
+
+.btnDanger:hover{
+  filter: brightness(1.06);
+}
+
+.chip{
+  padding: 9px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,.06);
+  font-weight: 700;
+}
+
+.chip:hover{
+  border-color: rgba(124,58,237,.55);
+}
+
+.chipActive{
+  border-color: rgba(124,58,237,.75);
+  box-shadow: 0 0 0 4px rgba(124,58,237,.14);
+}
+
+.stackGap{
+  display: grid;
+  gap: 10px;
+}
+/* --- Food log UI --- */
+.foodHeader{
+  display:flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.foodSummary{
+  display:grid;
+  gap:10px;
+  grid-template-columns: 1fr 1fr 1fr;
+  margin-top: 10px;
+}
+
+@media (max-width: 720px){
+  .foodSummary{ grid-template-columns: 1fr; }
+}
+
+.miniCard{
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 12px;
+  background: rgba(255,255,255,.05);
+}
+
+.miniTitle{ color: var(--muted); font-size: 12px; }
+.miniValue{ font-size: 16px; font-weight: 800; margin-top: 4px; }
+
+.mealCard{
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 12px;
+  background: rgba(255,255,255,.04);
+  margin-top: 10px;
+}
+
+.mealTop{
+  display:flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.mealName{
+  font-weight: 800;
   font-size: 14px;
 }
 
-input,
-select {
-  padding: 10px;
-  font-size: 16px;
-  margin-top: 6px;
+.mealMeta{
+  color: var(--muted);
+  font-size: 12px;
 }
 
-button {
-  width: 100%;
-  padding: 12px;
-  font-size: 16px;
-  background: #0f172a;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
+.foodList{
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 8px;
 }
 
-button:hover {
-  background: #020617;
+.foodRow{
+  display:flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 10px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(255,255,255,.04);
 }
 
-.results {
-  margin-top: 24px;
-  background:#0f172a;
-  padding: 16px;
-  border-radius: 8px;
+.foodLeft{
+  min-width: 0;
 }
 
-.results p {
-  margin: 8px 0;
+.foodName{
+  font-weight: 800;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
+
+.foodMacros{
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+.iconBtn{
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,.06);
+  font-weight: 900;
+}
+
+.iconBtn:hover{
+  border-color: rgba(239,68,68,.55);
+}
+
+.divider{
+  border-top: 1px solid var(--border);
+  margin: 12px 0;
+}
+
+.note{
+  color: var(--muted);
+  font-size: 12px;
+}
+/* ================= FOOD LOG UI ================= */
+
+.foodHeader{
+  display:flex;
+  justify-content: space-between;
+  align-items: center;
+  gap:12px;
+  flex-wrap: wrap;
+}
+
+.muted{
+  color: rgba(255,255,255,.6);
+  font-size: 12px;
+}
+
+.panel{
+  border:1px solid rgba(255,255,255,.1);
+  border-radius:20px;
+  padding:16px;
+  background: radial-gradient(120% 120% at 0% 0%, #1e293b 0%, #020617 70%);
+}
+
+.foodSummary{
+  display:grid;
+  gap:10px;
+  grid-template-columns: 1fr 1fr 1fr;
+  margin-top: 10px;
+}
+
+@media (max-width: 720px){
+  .foodSummary{ grid-template-columns: 1fr; }
+}
+
+.miniCard{
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:16px;
+  padding:12px;
+  background: rgba(255,255,255,.04);
+}
+
+.mealCard{
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:18px;
+  padding:14px;
+  margin-top:12px;
+  background: rgba(255,255,255,.04);
+}
+
+.foodList{
+  list-style:none;
+  padding:0;
+  margin-top:10px;
+  display:grid;
+  gap:8px;
+}
+
+.foodRow{
+  display:flex;
+  justify-content: space-between;
+  align-items:center;
+  gap:10px;
+  padding:10px;
+  border-radius:14px;
+  background: rgba(255,255,255,.05);
+  border:1px solid rgba(255,255,255,.08);
+}
+
+.foodName{
+  font-weight:700;
+  font-size:13px;
+}
+
+.foodMacros{
+  font-size:12px;
+  color: rgba(255,255,255,.65);
+}
+
+.iconBtn{
+  width:34px;
+  height:34px;
+  border-radius:12px;
+  border:1px solid rgba(255,255,255,.15);
+  background: transparent;
+  color:white;
+  font-size:18px;
+}
+
+.iconBtn:hover{
+  border-color:#ef4444;
+  color:#ef4444;
+}
+
+.grid2{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap:12px;
+}
+
+@media (max-width: 720px){
+  .grid2{ grid-template-columns: 1fr; }
+}
+
+.actionsRow{
+  display:flex;
+  gap:10px;
+  flex-wrap: wrap;
+}
+
+.btnPrimary{
+  background:#7c3aed;
+  color:white;
+  border:none;
+  padding:12px 16px;
+  border-radius:14px;
+  font-weight:700;
+}
+
+.btnGhost{
+  background:transparent;
+  border:1px solid rgba(255,255,255,.2);
+  color:white;
+  padding:12px 16px;
+  border-radius:14px;
+}
+
+.chip{
+  background:rgba(255,255,255,.08);
+  border:1px solid rgba(255,255,255,.15);
+  padding:6px 12px;
+  border-radius:999px;
+  font-size:12px;
+}
+/* --- Select dropdown fix (dark) --- */
+select{
+  background-color: rgba(255,255,255,.06);
+  color: var(--text);
+  border: 1px solid var(--border);
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+
+select option{
+  background-color: #0b1220;  /* sötét háttér */
+  color: rgba(255,255,255,.92);
+}
+
+/* Date input ikon sötétben (Chrome) */
+input[type="date"]{
+  color-scheme: dark;
+}
+/* --- Progress bars --- */
+.progressWrap{
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.10);
+  overflow: hidden;
+  margin-top: 10px;
+}
+
+.progressBar{
+  height: 100%;
+  width: 0%;
+  border-radius: 999px;
+  background: rgba(124,58,237,.95);
+}
+
+/* 상태 színek (kcal alapján) */
+.progressOk{ background: rgba(34,197,94,.95); }      /* 0-80% */
+.progressWarn{ background: rgba(245,158,11,.95); }   /* 81-110% */
+.progressBad{ background: rgba(239,68,68,.95); }     /* 110%+ */
+
+.progressWrap{
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.10);
+  overflow: hidden;
+  margin-top: 10px;
+}
+
+.progressBar{
+  height: 100%;
+  width: 0%;
+  border-radius: 999px;
+}
+
+.progressOk{ background: rgba(34,197,94,.95); }
+.progressWarn{ background: rgba(245,158,11,.95); }
+.progressBad{ background: rgba(239,68,68,.95); }
+
+
+
+
+/* ================= END FOOD LOG UI ================= */
+
+
+

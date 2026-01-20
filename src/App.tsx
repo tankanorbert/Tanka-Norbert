@@ -1,10 +1,28 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import "./App.css";
+
 import { calculateBMR, calculateTDEE, activityLevels } from "./utils/calorie";
-import { saveData, loadData } from "./utils/storage";
 import { calculateMacros } from "./utils/macros";
-import {MacroPie} from "./components/MacroPie";
 import { splitIntoMeals } from "./utils/meals";
-import "./App.css"
+import type { MealMode } from "./utils/meals";
+
+import {MacroPie} from "./components/MacroPie";
+import FoodLogPanel from "./components/FoodLogPanel";
+
+import {
+  saveData,
+  loadData,
+  saveGoal,
+  loadGoal,
+  loadFoodLogByDate,
+  saveFoodLogByDate,
+  formatDateId,
+  loadLastDateId,
+  saveLastDateId,
+  listSavedFoodLogDays,
+  clearFoodLogByDate,
+} from "./utils/storage";
+import type { FoodLog } from "./utils/storage";
 
 function App() {
   const [weight, setWeight] = useState(93);
@@ -12,31 +30,21 @@ function App() {
   const [age, setAge] = useState(25);
   const [gender, setGender] = useState<"male" | "female">("male");
   const [activity, setActivity] = useState(activityLevels.moderate);
+
   const [result, setResult] = useState<number | null>(null);
-  const maintenanceCalories = result ? Math.round(result) : null;
-const cutCalories = result ? Math.max(1200, Math.round(result - 500)) : null;
-const bulkCalories = result ? Math.round(result + 300) : null;
-const maintenanceMacros = maintenanceCalories ? calculateMacros(maintenanceCalories, weight) : null;
-const cutMacros = cutCalories ? calculateMacros(cutCalories, weight) : null;
-const bulkMacros =bulkCalories ? calculateMacros(bulkCalories, weight) : null;
-const [goal, setGoal] = useState<"cut" | "maint" | "bulk">("maint");
 
-const selected = (() => {
-  if (goal === "cut" && cutCalories && cutMacros) {
-    return { title: "Fat loss", calories: cutCalories, macros: cutMacros };
-  }
-  if (goal === "bulk" && bulkCalories && bulkMacros) {
-    return { title: "Muscle gain", calories: bulkCalories, macros: bulkMacros };
-  }
-  if (maintenanceCalories && maintenanceMacros) {
-    return { title: "Maintenance", calories: maintenanceCalories, macros: maintenanceMacros };
-  }
-  return null;
-})();
-const mealPlan = selected ? splitIntoMeals(selected.calories, selected.macros) : null;
+  const [goal, setGoal] = useState<"cut" | "maint" | "bulk">(loadGoal());
+  const [mealMode, setMealMode] = useState<MealMode>(4);
 
+  const todayId = formatDateId(new Date());
+  const [dateId, setDateId] = useState<string>(() => loadLastDateId() ?? todayId);
 
+  const [foodLog, setFoodLog] = useState<FoodLog>(() => {
+    const initialDate = loadLastDateId() ?? todayId;
+    return loadFoodLogByDate(initialDate);
+  });
 
+  const [savedDays, setSavedDays] = useState<string[]>(() => listSavedFoodLogDays());
 
   useEffect(() => {
     const stored = loadData();
@@ -49,6 +57,75 @@ const mealPlan = selected ? splitIntoMeals(selected.calories, selected.macros) :
     setActivity(stored.activity);
   }, []);
 
+  useEffect(() => {
+    setFoodLog(loadFoodLogByDate(dateId));
+    saveLastDateId(dateId);
+  }, [dateId]);
+
+  useEffect(() => {
+    saveFoodLogByDate(dateId, foodLog);
+    setSavedDays(listSavedFoodLogDays());
+  }, [dateId, foodLog]);
+
+  const maintenanceCalories = result ? Math.round(result) : null;
+  const cutCalories = result ? Math.max(1200, Math.round(result - 500)) : null;
+  const bulkCalories = result ? Math.round(result + 300) : null;
+
+  const maintenanceMacros = useMemo(
+    () => (maintenanceCalories ? calculateMacros(maintenanceCalories, weight) : null),
+    [maintenanceCalories, weight]
+  );
+
+  const cutMacros = useMemo(
+    () =>
+      cutCalories
+        ? // Ha a calculateMacros nálad nem fogad 3. paramétert, töröld a ", 50"-et:
+          calculateMacros(cutCalories, weight, 50)
+        : null,
+    [cutCalories, weight]
+  );
+
+  const bulkMacros = useMemo(
+    () => (bulkCalories ? calculateMacros(bulkCalories, weight) : null),
+    [bulkCalories, weight]
+  );
+
+  const selected = useMemo(() => {
+    if (goal === "cut" && cutCalories && cutMacros) {
+      return { title: "Fat loss", calories: cutCalories, macros: cutMacros };
+    }
+    if (goal === "bulk" && bulkCalories && bulkMacros) {
+      return { title: "Muscle gain", calories: bulkCalories, macros: bulkMacros };
+    }
+    if (maintenanceCalories && maintenanceMacros) {
+      return { title: "Maintenance", calories: maintenanceCalories, macros: maintenanceMacros };
+    }
+    return null;
+  }, [
+    goal,
+    cutCalories,
+    cutMacros,
+    bulkCalories,
+    bulkMacros,
+    maintenanceCalories,
+    maintenanceMacros,
+  ]);
+
+  const mealPlan = useMemo(() => {
+    return selected ? splitIntoMeals(selected.calories, selected.macros, mealMode) : null;
+  }, [selected, mealMode]);
+
+  const foodTarget = useMemo(() => {
+    return selected
+      ? {
+          calories: selected.calories,
+          proteinG: selected.macros.protein.grams,
+          carbsG: selected.macros.carbs.grams,
+          fatG: selected.macros.fat.grams,
+        }
+      : null;
+  }, [selected]);
+
   function calculate() {
     const bmr = calculateBMR(weight, height, age, gender);
     const tdee = calculateTDEE(bmr, activity);
@@ -58,141 +135,196 @@ const mealPlan = selected ? splitIntoMeals(selected.calories, selected.macros) :
   }
 
   return (
-    <div className={"cointainer"}>
+    <div className="container">
       <h1>Calorie Calculator</h1>
 
-      <label>
-        Weight (kg)
-        <input
-          type="number"
-          value={weight}
-          onChange={(e) => setWeight(Number(e.target.value))}
-        />
-      </label>
+      {/* Day switcher */}
+      <div className="panel">
+        <h2>Day</h2>
 
-      <br />
+        <div className="stackGap">
+          <div className="actionsRow">
+            <button className="chip" type="button" onClick={() => setDateId(formatDateId(new Date()))}>
+              Today
+            </button>
 
-      <label>
-        Height (cm)
-        <input
-          type="number"
-          value={height}
-          onChange={(e) => setHeight(Number(e.target.value))}
-        />
-      </label>
+            <button
+              className="chip"
+              type="button"
+              onClick={() => {
+                const d = new Date();
+                d.setDate(d.getDate() - 1);
+                setDateId(formatDateId(d));
+              }}
+            >
+              Yesterday
+            </button>
 
-      <br />
+            <label style={{ marginBottom: 0, minWidth: 180 }}>
+              Select date
+              <input type="date" value={dateId} onChange={(e) => setDateId(e.target.value)} />
+            </label>
+          </div>
 
-      <label>
-        Age
-        <input
-          type="number"
-          value={age}
-          onChange={(e) => setAge(Number(e.target.value))}
-        />
-      </label>
+          <div className="muted">
+            Current day: <strong>{dateId}</strong>
+          </div>
 
-      <br />
+          <div className="actionsRow">
+            <button
+              className="btnDanger"
+              type="button"
+              onClick={() => {
+                clearFoodLogByDate(dateId);
+                setFoodLog(loadFoodLogByDate(dateId));
+                setSavedDays(listSavedFoodLogDays());
+              }}
+            >
+              Clear this day
+            </button>
 
-      <label>
-        Gender
-        <select value={gender} onChange={(e) => setGender(e.target.value as any)}>
-          <option value="male">Male</option>
-          <option value="female">Female</option>
-        </select>
-      </label>
+            <button
+              className="btnGhost"
+              type="button"
+              onClick={() => {
+                clearFoodLogByDate(dateId);
+                const today = formatDateId(new Date());
+                setDateId(today);
+              }}
+            >
+              Clear + go Today
+            </button>
+          </div>
 
-      <br />
+          {savedDays.length > 0 && (
+            <div>
+              <strong>Saved days</strong>
 
-      <label>
-        Activity
-        <select
-          value={activity}
-          onChange={(e) => setActivity(Number(e.target.value))}
-        >
-          <option value={activityLevels.sedentary}>Sedentary</option>
-          <option value={activityLevels.light}>Light</option>
-          <option value={activityLevels.moderate}>Moderate</option>
-          <option value={activityLevels.active}>Active</option>
-          <option value={activityLevels.veryActive}>Very active</option>
-        </select>
-      </label>
+              <div className="pills">
+                {savedDays.slice(0, 14).map((d) => (
+                  <button
+                    key={d}
+                    type="button"
+                    className={d === dateId ? "chip chipActive" : "chip"}
+                    onClick={() => setDateId(d)}
+                  >
+                    {d}
+                  </button>
+                ))}
+              </div>
 
-      <br /><br />
+              <div className="muted" style={{ marginTop: 6 }}>
+                Showing last {Math.min(14, savedDays.length)} saved days.
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
 
-      <button onClick={calculate}>Calculate</button>
+      {/* Inputs */}
+      <div className="panel">
+        <h2>Inputs</h2>
+
+        <div className="grid2">
+          <label>
+            Weight (kg)
+            <input type="number" value={weight} onChange={(e) => setWeight(Number(e.target.value))} />
+          </label>
+
+          <label>
+            Height (cm)
+            <input type="number" value={height} onChange={(e) => setHeight(Number(e.target.value))} />
+          </label>
+
+          <label>
+            Age
+            <input type="number" value={age} onChange={(e) => setAge(Number(e.target.value))} />
+          </label>
+
+          <label>
+            Gender
+            <select value={gender} onChange={(e) => setGender(e.target.value as any)}>
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+            </select>
+          </label>
+
+          <label>
+            Activity
+            <select value={activity} onChange={(e) => setActivity(Number(e.target.value))}>
+              <option value={activityLevels.sedentary}>Sedentary</option>
+              <option value={activityLevels.light}>Light</option>
+              <option value={activityLevels.moderate}>Moderate</option>
+              <option value={activityLevels.active}>Active</option>
+              <option value={activityLevels.veryActive}>Very active</option>
+            </select>
+          </label>
+        </div>
+
+        <button className="btnPrimary" onClick={calculate}>
+          Calculate
+        </button>
+      </div>
 
       {result && (
-  <div className="results">
-    <h2>Calories</h2>
-    <p>Maintenance: <strong>{maintenanceCalories}</strong> kcal</p>
-    <p>Fat loss: <strong>{cutCalories}</strong> kcal</p>
-    <p>Muscle gain: <strong>{bulkCalories}</strong> kcal</p>
+        <>
+          <div className="panel">
+            <h2>Calories</h2>
 
-    <hr />
+            <div className="kpi">
+              <div className="kpiCard">
+                <div className="kpiTitle">Maintenance</div>
+                <div className="kpiValue">{maintenanceCalories} kcal</div>
+              </div>
+              <div className="kpiCard">
+                <div className="kpiTitle">Fat loss</div>
+                <div className="kpiValue">{cutCalories} kcal</div>
+              </div>
+              <div className="kpiCard">
+                <div className="kpiTitle">Muscle gain</div>
+                <div className="kpiValue">{bulkCalories} kcal</div>
+              </div>
+            </div>
 
-    <h2>Macros by goal</h2>
+            <hr />
 
-    {cutMacros && (
-      <div style={{ marginBottom: 16 }}>
-        <h3>Fat loss</h3>
-        <p>🥩 Protein: <strong>{cutMacros.protein.grams} g</strong> ({cutMacros.protein.calories} kcal · {cutMacros.protein.percent}%)</p>
-        <p>🍚 Carbs: <strong>{cutMacros.carbs.grams} g</strong> ({cutMacros.carbs.calories} kcal · {cutMacros.carbs.percent}%)</p>
-        <p>🧈 Fat: <strong>{cutMacros.fat.grams} g</strong> ({cutMacros.fat.calories} kcal · {cutMacros.fat.percent}%)</p>
-      </div>
-    )}
+            <label>
+              Goal
+              <select
+                value={goal}
+                onChange={(e) => {
+                  const g = e.target.value as "cut" | "maint" | "bulk";
+                  setGoal(g);
+                  saveGoal(g);
+                }}
+              >
+                <option value="cut">Fat loss</option>
+                <option value="maint">Maintenance</option>
+                <option value="bulk">Muscle gain</option>
+              </select>
+            </label>
+          </div>
 
-    {maintenanceMacros && (
-      <div style={{ marginBottom: 16 }}>
-        <h3>Maintenance</h3>
-        <p>🥩 Protein: <strong>{maintenanceMacros.protein.grams} g</strong> ({maintenanceMacros.protein.calories} kcal · {maintenanceMacros.protein.percent}%)</p>
-        <p>🍚 Carbs: <strong>{maintenanceMacros.carbs.grams} g</strong> ({maintenanceMacros.carbs.calories} kcal · {maintenanceMacros.carbs.percent}%)</p>
-        <p>🧈 Fat: <strong>{maintenanceMacros.fat.grams} g</strong> ({maintenanceMacros.fat.calories} kcal · {maintenanceMacros.fat.percent}%)</p>
-      </div>
-    )}
+          <div className="panel">
+            <h2>Macro chart</h2>
+            {selected ? (
+              <MacroPie title={selected.title} calories={selected.calories} macros={selected.macros} />
+            ) : (
+              <p className="muted">Pick a goal to see the chart.</p>
+            )}
 
-    {bulkMacros && (
-      <div>
-        <h3>Muscle gain</h3>
-        <p>🥩 Protein: <strong>{bulkMacros.protein.grams} g</strong> ({bulkMacros.protein.calories} kcal · {bulkMacros.protein.percent}%)</p>
-        <p>🍚 Carbs: <strong>{bulkMacros.carbs.grams} g</strong> ({bulkMacros.carbs.calories} kcal · {bulkMacros.carbs.percent}%)</p>
-        <p>🧈 Fat: <strong>{bulkMacros.fat.grams} g</strong> ({bulkMacros.fat.calories} kcal · {bulkMacros.fat.percent}%)</p>
-      </div>
-    )}
-    <hr />
-<hr />
+            <hr />
 
-<h2>Macro chart</h2>
+            
+          </div>
 
-<label style={{ marginBottom: 12 }}>
-  Goal
-  <select value={goal} onChange={(e) => setGoal(e.target.value as any)}>
-    <option value="cut">Fat loss</option>
-    <option value="maint">Maintenance</option>
-    <option value="bulk">Muscle gain</option>
-  </select>
-</label>
-
-{selected && (
-  <MacroPie title={selected.title} calories={selected.calories} macros={selected.macros} />
-)}
-
-  </div>
-)}
-<hr />
-<h2>Meal split</h2>
-
-{mealPlan && (
-  <div>
-    {mealPlan.map((m) => (
-      <div key={m.name} style={{ marginBottom: 12 }}>
-        <strong>{m.name}</strong> — {m.calories} kcal
-        <div>🥩 {m.proteinG} g · 🍚 {m.carbsG} g · 🧈 {m.fatG} g</div>
-      </div>
-    ))}
-  </div>
-)}
-
+          {foodTarget && (
+            <div className="panel">
+              <FoodLogPanel target={foodTarget} log={foodLog} onChange={(next) => setFoodLog(next)} />
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }
