@@ -7,12 +7,12 @@ export type MealKey =
   | "supper";
 
 export const mealLabels: Record<MealKey, string> = {
-  breakfast: "Reggeli",
-  snack1: "Tízórai",
-  lunch: "Ebéd",
-  snack2: "Uzsonna",
-  dinner: "Vacsora",
-  supper: "2. vacsora",
+  breakfast: "Breakfast",
+  snack1: "Snack 1",
+  lunch: "Lunch",
+  snack2: "Snack 2",
+  dinner: "Dinner",
+  supper: "Supper",
 };
 
 export const mealShares6: Array<{ key: MealKey; share: number }> = [

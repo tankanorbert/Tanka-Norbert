@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState,useRef } from "react";
 import type { MealKey } from "../utils/meals";
 import { mealLabels, mealShares6 } from "../utils/meals";
 import type { FoodItem } from "../utils/food";
@@ -31,7 +31,8 @@ export default function FoodLogPanel({ target, log, onChange }: Props) {
   const [fat, setFat] = useState("");
 
   const [templates, setTemplates] = useState<FoodTemplate[]>(() => loadFoodTemplates());
-  
+  const addFoodRef = useRef<HTMLDivElement | null>(null);
+
 
   useEffect(() => {
     saveFoodTemplates(templates);
@@ -121,6 +122,20 @@ export default function FoodLogPanel({ target, log, onChange }: Props) {
     const next = { ...log, [meal]: [...(log[meal] ?? []), item] };
     onChange(next);
   }
+  function jumpToMeal(m: MealKey) {
+  setMeal(m);
+  setIsAddOpen(true);
+
+  // várjuk meg míg a panel megjelenik
+  setTimeout(() => {
+    addFoodRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  }, 50);
+}
+
+
 
   function removeFood(mealKey: MealKey, id: string) {
     const next = { ...log, [mealKey]: (log[mealKey] ?? []).filter((x) => x.id !== id) };
@@ -155,15 +170,47 @@ export default function FoodLogPanel({ target, log, onChange }: Props) {
         </div>
 
         <div className="miniCard">
-          <div className="miniTitle">Remaining</div>
-          <div className="miniValue">{remaining.calories} kcal</div>
-          <div className="muted">🥩 {remaining.proteinG}g · 🍚 {remaining.carbsG}g · 🧈 {remaining.fatG}g</div>
-        </div>
+  <div className="miniTitle">Remaining</div>
+  <div className="miniValue">{remaining.calories} kcal</div>
+
+  {(() => {
+  })()}
+
+  <div className="muted" style={{ marginTop: 8 }}>
+    🥩 {remaining.proteinG}g · 🍚 {remaining.carbsG}g · 🧈 {remaining.fatG}g
+  </div>
+</div>
+</div>
+{(() => {
+  const targetKcal = target.calories;
+  const consumedKcal = dayTotals.calories;
+
+  const pct = targetKcal <= 0 ? 0 : Math.round((consumedKcal / targetKcal) * 100);
+  const barPct = Math.min(100, Math.max(0, pct));
+
+  const over = consumedKcal - targetKcal;
+  const label = over > 0 ? `Over +${over} kcal` : `Remaining ${Math.max(0, -over)} kcal`;
+
+  const cls =
+    pct <= 80 ? "dayProgressFill fillOk" : pct <= 110 ? "dayProgressFill fillWarn" : "dayProgressFill fillBad";
+
+  return (
+    <div className="dayProgress">
+      <div className="dayProgressTop">
+        <span>{consumedKcal} / {targetKcal} kcal ({pct}%)</span>
+        <span>{label}</span>
       </div>
+      <div className="dayProgressWrap">
+        <div className={cls} style={{ width: `${barPct}%` }} />
+      </div>
+    </div>
+  );
+})()}
+
 
       {/* Add food (collapsible) */}
-      {isAddOpen && (
-        <div className="panel" style={{ marginTop: 12 }}>
+      {isAddOpen && (<div
+      ref={addFoodRef}className="panel"style={{ marginTop: 12 }}>
           <h2>Add food</h2>
 
           <div className="grid2">
@@ -256,7 +303,17 @@ export default function FoodLogPanel({ target, log, onChange }: Props) {
           pct <= 80 ? "progressBar progressOk" : pct <= 110 ? "progressBar progressWarn" : "progressBar progressBad";
 
         return (
-          <div key={key} className="mealCard">
+          <div
+  key={key}
+  className="mealCard"
+  role="button"
+  tabIndex={0}
+  onClick={() => jumpToMeal(key)}
+  onKeyDown={(e) => {
+    if (e.key === "Enter" || e.key === " ") jumpToMeal(key);
+  }}
+>
+
             <div className="mealTop">
               <div className="mealName">{mealLabels[key]}</div>
               <div className="mealMeta">
@@ -268,6 +325,60 @@ export default function FoodLogPanel({ target, log, onChange }: Props) {
             <div className="progressWrap">
               <div className={barClass} style={{ width: `${barPct}%` }} />
             </div>
+            {(() => {
+  const pTarget = goalForMeal.proteinG;
+  const cTarget = goalForMeal.carbsG;
+  const fTarget = goalForMeal.fatG;
+
+  const pConsumed = t.protein;
+  const cConsumed = t.carbs;
+  const fConsumed = t.fat;
+
+  const pct = (consumed: number, target: number) =>
+    target <= 0 ? 0 : Math.round((consumed / target) * 100);
+
+  const clamp = (v: number) => Math.min(100, Math.max(0, v));
+
+  const pPct = clamp(pct(pConsumed, pTarget));
+  const cPct = clamp(pct(cConsumed, cTarget));
+  const fPct = clamp(pct(fConsumed, fTarget));
+
+  return (
+    <div className="miniBars">
+      {/* Protein */}
+      <div className="miniBarRow">
+        <div className="miniLabel">Protein</div>
+        <div className="miniWrap">
+          <div className="miniFill fillProtein" style={{ width: `${pPct}%` }} />
+        </div>
+        <div className="miniPct">{pPct}%</div>
+      </div>
+
+      {/* Carbs */}
+      <div className="miniBarRow">
+        <div className="miniLabel">Carbs</div>
+        <div className="miniWrap">
+          <div className="miniFill fillCarbs" style={{ width: `${cPct}%` }} />
+        </div>
+        <div className="miniPct">{cPct}%</div>
+      </div>
+
+      {/* Fat */}
+      <div className="miniBarRow">
+        <div className="miniLabel">Fat</div>
+        <div className="miniWrap">
+          <div className="miniFill fillFat" style={{ width: `${fPct}%` }} />
+        </div>
+        <div className="miniPct">{fPct}%</div>
+      </div>
+    </div>
+  );
+})()}
+
+
+
+
+
             <div className="note" style={{ marginTop: 6 }}>
               {t.calories}/{goalForMeal.calories} kcal ({pct}%)
             </div>
@@ -296,9 +407,18 @@ export default function FoodLogPanel({ target, log, onChange }: Props) {
                       </div>
                     </div>
 
-                    <button className="iconBtn" type="button" onClick={() => removeFood(key, x.id)} aria-label="Remove">
-                      ×
-                    </button>
+                    <button
+  className="iconBtn"
+  type="button"
+  onClick={(e) => {
+    e.stopPropagation();
+    removeFood(key, x.id);
+  }}
+  aria-label="Remove"
+>
+  ×
+</button>
+
                   </li>
                 ))}
               </ul>
