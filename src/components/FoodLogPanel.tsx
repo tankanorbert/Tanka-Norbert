@@ -326,52 +326,74 @@ export default function FoodLogPanel({ target, log, onChange }: Props) {
               <div className={barClass} style={{ width: `${barPct}%` }} />
             </div>
             {(() => {
-  const pTarget = goalForMeal.proteinG;
-  const cTarget = goalForMeal.carbsG;
-  const fTarget = goalForMeal.fatG;
+  const proteinPct =
+  goalForMeal.proteinG <= 0
+    ? 0
+    : Math.round((t.protein / goalForMeal.proteinG) * 100);
 
-  const pConsumed = t.protein;
-  const cConsumed = t.carbs;
-  const fConsumed = t.fat;
+const carbsPct =
+  goalForMeal.carbsG <= 0
+    ? 0
+    : Math.round((t.carbs / goalForMeal.carbsG) * 100);
 
-  const pct = (consumed: number, target: number) =>
-    target <= 0 ? 0 : Math.round((consumed / target) * 100);
+const fatPct =
+  goalForMeal.fatG <= 0
+    ? 0
+    : Math.round((t.fat / goalForMeal.fatG) * 100);
 
-  const clamp = (v: number) => Math.min(100, Math.max(0, v));
 
-  const pPct = clamp(pct(pConsumed, pTarget));
-  const cPct = clamp(pct(cConsumed, cTarget));
-  const fPct = clamp(pct(fConsumed, fTarget));
+ // const pConsumed = t.protein;
+  //const cConsumed = t.carbs;
+  //const fConsumed = t.fat;
+
+  //const pct = (consumed: number, target: number) =>
+    //target <= 0 ? 0 : Math.round((consumed / target) * 100);
+
+  //const clamp = (v: number) => Math.min(100, Math.max(0, v));
+
+  //const pPct = clamp(pct(pConsumed, goalForMeal.proteinG));
+//const cPct = clamp(pct(cConsumed, goalForMeal.carbsG));
+//const fPct = clamp(pct(fConsumed, goalForMeal.fatG));
+
 
   return (
     <div className="miniBars">
-      {/* Protein */}
-      <div className="miniBarRow">
-        <div className="miniLabel">Protein</div>
-        <div className="miniWrap">
-          <div className="miniFill fillProtein" style={{ width: `${pPct}%` }} />
-        </div>
-        <div className="miniPct">{pPct}%</div>
-      </div>
-
-      {/* Carbs */}
-      <div className="miniBarRow">
-        <div className="miniLabel">Carbs</div>
-        <div className="miniWrap">
-          <div className="miniFill fillCarbs" style={{ width: `${cPct}%` }} />
-        </div>
-        <div className="miniPct">{cPct}%</div>
-      </div>
-
-      {/* Fat */}
-      <div className="miniBarRow">
-        <div className="miniLabel">Fat</div>
-        <div className="miniWrap">
-          <div className="miniFill fillFat" style={{ width: `${fPct}%` }} />
-        </div>
-        <div className="miniPct">{fPct}%</div>
-      </div>
+  {/* Protein */}
+  <div className="miniBarRow">
+    <div className="miniLabel">Protein</div>
+    <div className="miniWrap">
+      <div
+        className="miniFill fillProtein"
+        style={{ width: `${Math.min(100, proteinPct)}%` }}
+      />
     </div>
+    <div className="miniPct">{proteinPct}%</div>
+  </div>
+
+  {/* Carbs */}
+  <div className="miniBarRow">
+    <div className="miniLabel">Carbs</div>
+    <div className="miniWrap">
+      <div
+        className="miniFill fillCarbs"
+        style={{ width: `${Math.min(100, carbsPct)}%` }}
+      />
+    </div>
+    <div className="miniPct">{carbsPct}%</div>
+  </div>
+
+  {/* Fat */}
+  <div className="miniBarRow">
+    <div className="miniLabel">Fat</div>
+    <div className="miniWrap">
+      <div
+        className="miniFill fillFat"
+        style={{ width: `${Math.min(100, fatPct)}%` }}
+      />
+    </div>
+    <div className="miniPct">{fatPct}%</div>
+  </div>
+</div>
   );
 })()}
 
