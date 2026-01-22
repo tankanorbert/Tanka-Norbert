@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState,useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { MealKey } from "../utils/meals";
 import { mealLabels, mealShares6 } from "../utils/meals";
 import type { FoodItem } from "../utils/food";
@@ -20,6 +20,14 @@ function clampNum(v: string) {
   return Number.isFinite(n) ? n : 0;
 }
 
+function clamp01to100(v: number) {
+  return Math.min(100, Math.max(0, v));
+}
+
+function percent(consumed: number, target: number) {
+  return target <= 0 ? 0 : Math.round((consumed / target) * 100);
+}
+
 export default function FoodLogPanel({ target, log, onChange }: Props) {
   const [isAddOpen, setIsAddOpen] = useState(false);
 
@@ -32,7 +40,6 @@ export default function FoodLogPanel({ target, log, onChange }: Props) {
 
   const [templates, setTemplates] = useState<FoodTemplate[]>(() => loadFoodTemplates());
   const addFoodRef = useRef<HTMLDivElement | null>(null);
-
 
   useEffect(() => {
     saveFoodTemplates(templates);
@@ -64,12 +71,28 @@ export default function FoodLogPanel({ target, log, onChange }: Props) {
     return totals(all);
   }, [log]);
 
-  const remaining = {
-    calories: Math.max(0, target.calories - dayTotals.calories),
-    proteinG: Math.max(0, target.proteinG - dayTotals.protein),
-    carbsG: Math.max(0, target.carbsG - dayTotals.carbs),
-    fatG: Math.max(0, target.fatG - dayTotals.fat),
-  };
+  const remaining = useMemo(() => {
+    return {
+      calories: Math.max(0, target.calories - dayTotals.calories),
+      proteinG: Math.max(0, target.proteinG - dayTotals.protein),
+      carbsG: Math.max(0, target.carbsG - dayTotals.carbs),
+      fatG: Math.max(0, target.fatG - dayTotals.fat),
+    };
+  }, [target, dayTotals]);
+
+  // --- Daily progress (kcal) ---
+  const dailyKcalPct = percent(dayTotals.calories, target.calories);
+  const dailyKcalBar = clamp01to100(dailyKcalPct);
+  const dailyOver = dayTotals.calories - target.calories;
+  const dailyLabel =
+    dailyOver > 0 ? `Over +${dailyOver} kcal` : `Remaining ${Math.max(0, -dailyOver)} kcal`;
+
+  const dailyFillClass =
+    dailyKcalPct <= 80
+      ? "dayProgressFill fillOk"
+      : dailyKcalPct <= 110
+      ? "dayProgressFill fillWarn"
+      : "dayProgressFill fillBad";
 
   function addFood() {
     const trimmed = name.trim();
@@ -122,20 +145,19 @@ export default function FoodLogPanel({ target, log, onChange }: Props) {
     const next = { ...log, [meal]: [...(log[meal] ?? []), item] };
     onChange(next);
   }
+
   function jumpToMeal(m: MealKey) {
-  setMeal(m);
-  setIsAddOpen(true);
+    setMeal(m);
+    setIsAddOpen(true);
 
-  // várjuk meg míg a panel megjelenik
-  setTimeout(() => {
-    addFoodRef.current?.scrollIntoView({
-      behavior: "smooth",
-      block: "start",
-    });
-  }, 50);
-}
-
-
+    // várjuk meg míg a panel megjelenik
+    setTimeout(() => {
+      addFoodRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 50);
+  }
 
   function removeFood(mealKey: MealKey, id: string) {
     const next = { ...log, [mealKey]: (log[mealKey] ?? []).filter((x) => x.id !== id) };
@@ -170,47 +192,30 @@ export default function FoodLogPanel({ target, log, onChange }: Props) {
         </div>
 
         <div className="miniCard">
-  <div className="miniTitle">Remaining</div>
-  <div className="miniValue">{remaining.calories} kcal</div>
-
-  {(() => {
-  })()}
-
-  <div className="muted" style={{ marginTop: 8 }}>
-    🥩 {remaining.proteinG}g · 🍚 {remaining.carbsG}g · 🧈 {remaining.fatG}g
-  </div>
-</div>
-</div>
-{(() => {
-  const targetKcal = target.calories;
-  const consumedKcal = dayTotals.calories;
-
-  const pct = targetKcal <= 0 ? 0 : Math.round((consumedKcal / targetKcal) * 100);
-  const barPct = Math.min(100, Math.max(0, pct));
-
-  const over = consumedKcal - targetKcal;
-  const label = over > 0 ? `Over +${over} kcal` : `Remaining ${Math.max(0, -over)} kcal`;
-
-  const cls =
-    pct <= 80 ? "dayProgressFill fillOk" : pct <= 110 ? "dayProgressFill fillWarn" : "dayProgressFill fillBad";
-
-  return (
-    <div className="dayProgress">
-      <div className="dayProgressTop">
-        <span>{consumedKcal} / {targetKcal} kcal ({pct}%)</span>
-        <span>{label}</span>
+          <div className="miniTitle">Remaining</div>
+          <div className="miniValue">{remaining.calories} kcal</div>
+          <div className="muted" style={{ marginTop: 8 }}>
+            🥩 {remaining.proteinG}g · 🍚 {remaining.carbsG}g · 🧈 {remaining.fatG}g
+          </div>
+        </div>
       </div>
-      <div className="dayProgressWrap">
-        <div className={cls} style={{ width: `${barPct}%` }} />
-      </div>
-    </div>
-  );
-})()}
 
+      {/* Daily progress bar (kcal) */}
+      <div className="dayProgress">
+        <div className="dayProgressTop">
+          <span>
+            {dayTotals.calories} / {target.calories} kcal ({dailyKcalPct}%)
+          </span>
+          <span>{dailyLabel}</span>
+        </div>
+        <div className="dayProgressWrap">
+          <div className={dailyFillClass} style={{ width: `${dailyKcalBar}%` }} />
+        </div>
+      </div>
 
       {/* Add food (collapsible) */}
-      {isAddOpen && (<div
-      ref={addFoodRef}className="panel"style={{ marginTop: 12 }}>
+      {isAddOpen && (
+        <div ref={addFoodRef} className="panel" style={{ marginTop: 12 }}>
           <h2>Add food</h2>
 
           <div className="grid2">
@@ -232,7 +237,12 @@ export default function FoodLogPanel({ target, log, onChange }: Props) {
 
             <label>
               Grams (optional)
-              <input value={grams} onChange={(e) => setGrams(e.target.value)} placeholder="e.g. 80" inputMode="numeric" />
+              <input
+                value={grams}
+                onChange={(e) => setGrams(e.target.value)}
+                placeholder="e.g. 80"
+                inputMode="numeric"
+              />
             </label>
 
             <div />
@@ -296,24 +306,31 @@ export default function FoodLogPanel({ target, log, onChange }: Props) {
         const t = totals(items);
         const goalForMeal = perMealTargets[key];
 
-        const pct =
-          goalForMeal.calories <= 0 ? 0 : Math.round((t.calories / goalForMeal.calories) * 100);
-        const barPct = Math.min(100, Math.max(0, pct));
+        const kcalPct = percent(t.calories, goalForMeal.calories);
+        const kcalBar = clamp01to100(kcalPct);
+
         const barClass =
-          pct <= 80 ? "progressBar progressOk" : pct <= 110 ? "progressBar progressWarn" : "progressBar progressBad";
+          kcalPct <= 80
+            ? "progressBar progressOk"
+            : kcalPct <= 110
+            ? "progressBar progressWarn"
+            : "progressBar progressBad";
+
+        const proteinPct = clamp01to100(percent(t.protein, goalForMeal.proteinG));
+        const carbsPct = clamp01to100(percent(t.carbs, goalForMeal.carbsG));
+        const fatPct = clamp01to100(percent(t.fat, goalForMeal.fatG));
 
         return (
           <div
-  key={key}
-  className="mealCard"
-  role="button"
-  tabIndex={0}
-  onClick={() => jumpToMeal(key)}
-  onKeyDown={(e) => {
-    if (e.key === "Enter" || e.key === " ") jumpToMeal(key);
-  }}
->
-
+            key={key}
+            className="mealCard"
+            role="button"
+            tabIndex={0}
+            onClick={() => jumpToMeal(key)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") jumpToMeal(key);
+            }}
+          >
             <div className="mealTop">
               <div className="mealName">{mealLabels[key]}</div>
               <div className="mealMeta">
@@ -321,88 +338,40 @@ export default function FoodLogPanel({ target, log, onChange }: Props) {
               </div>
             </div>
 
-            {/* Progress bar (kcal) */}
+            {/* kcal progress */}
             <div className="progressWrap">
-              <div className={barClass} style={{ width: `${barPct}%` }} />
+              <div className={barClass} style={{ width: `${kcalBar}%` }} />
             </div>
-            {(() => {
-  const proteinPct =
-  goalForMeal.proteinG <= 0
-    ? 0
-    : Math.round((t.protein / goalForMeal.proteinG) * 100);
-
-const carbsPct =
-  goalForMeal.carbsG <= 0
-    ? 0
-    : Math.round((t.carbs / goalForMeal.carbsG) * 100);
-
-const fatPct =
-  goalForMeal.fatG <= 0
-    ? 0
-    : Math.round((t.fat / goalForMeal.fatG) * 100);
-
-
- // const pConsumed = t.protein;
-  //const cConsumed = t.carbs;
-  //const fConsumed = t.fat;
-
-  //const pct = (consumed: number, target: number) =>
-    //target <= 0 ? 0 : Math.round((consumed / target) * 100);
-
-  //const clamp = (v: number) => Math.min(100, Math.max(0, v));
-
-  //const pPct = clamp(pct(pConsumed, goalForMeal.proteinG));
-//const cPct = clamp(pct(cConsumed, goalForMeal.carbsG));
-//const fPct = clamp(pct(fConsumed, goalForMeal.fatG));
-
-
-  return (
-    <div className="miniBars">
-  {/* Protein */}
-  <div className="miniBarRow">
-    <div className="miniLabel">Protein</div>
-    <div className="miniWrap">
-      <div
-        className="miniFill fillProtein"
-        style={{ width: `${Math.min(100, proteinPct)}%` }}
-      />
-    </div>
-    <div className="miniPct">{proteinPct}%</div>
-  </div>
-
-  {/* Carbs */}
-  <div className="miniBarRow">
-    <div className="miniLabel">Carbs</div>
-    <div className="miniWrap">
-      <div
-        className="miniFill fillCarbs"
-        style={{ width: `${Math.min(100, carbsPct)}%` }}
-      />
-    </div>
-    <div className="miniPct">{carbsPct}%</div>
-  </div>
-
-  {/* Fat */}
-  <div className="miniBarRow">
-    <div className="miniLabel">Fat</div>
-    <div className="miniWrap">
-      <div
-        className="miniFill fillFat"
-        style={{ width: `${Math.min(100, fatPct)}%` }}
-      />
-    </div>
-    <div className="miniPct">{fatPct}%</div>
-  </div>
-</div>
-  );
-})()}
-
-
-
-
 
             <div className="note" style={{ marginTop: 6 }}>
-              {t.calories}/{goalForMeal.calories} kcal ({pct}%)
+              {t.calories}/{goalForMeal.calories} kcal ({kcalPct}%)
+            </div>
+
+            {/* macro mini bars */}
+            <div className="miniBars">
+              <div className="miniBarRow">
+                <div className="miniLabel">Protein</div>
+                <div className="miniWrap">
+                  <div className="miniFill fillProtein" style={{ width: `${proteinPct}%` }} />
+                </div>
+                <div className="miniPct">{proteinPct}%</div>
+              </div>
+
+              <div className="miniBarRow">
+                <div className="miniLabel">Carbs</div>
+                <div className="miniWrap">
+                  <div className="miniFill fillCarbs" style={{ width: `${carbsPct}%` }} />
+                </div>
+                <div className="miniPct">{carbsPct}%</div>
+              </div>
+
+              <div className="miniBarRow">
+                <div className="miniLabel">Fat</div>
+                <div className="miniWrap">
+                  <div className="miniFill fillFat" style={{ width: `${fatPct}%` }} />
+                </div>
+                <div className="miniPct">{fatPct}%</div>
+              </div>
             </div>
 
             <div className="mealMeta" style={{ marginTop: 8 }}>
@@ -430,17 +399,16 @@ const fatPct =
                     </div>
 
                     <button
-  className="iconBtn"
-  type="button"
-  onClick={(e) => {
-    e.stopPropagation();
-    removeFood(key, x.id);
-  }}
-  aria-label="Remove"
->
-  ×
-</button>
-
+                      className="iconBtn"
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeFood(key, x.id);
+                      }}
+                      aria-label="Remove"
+                    >
+                      ×
+                    </button>
                   </li>
                 ))}
               </ul>
