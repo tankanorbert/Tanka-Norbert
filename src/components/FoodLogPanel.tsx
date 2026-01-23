@@ -4,8 +4,9 @@ import { mealLabels, mealShares6 } from "../utils/meals";
 import type { FoodItem } from "../utils/food";
 import { totals, uid } from "../utils/food";
 
-import { loadFoodTemplates, saveFoodTemplates } from "../utils/storage";
-import type { FoodTemplate } from "../utils/storage";
+import { defaultFoodDb, calcFromPer100, normalize } from "../utils/foodDb";
+import type { FoodDbItem } from "../utils/foodDb";
+import { loadFoodDb, saveFoodDb } from "../utils/storage";
 
 type MacroTarget = { proteinG: number; carbsG: number; fatG: number; calories: number };
 
@@ -32,19 +33,56 @@ export default function FoodLogPanel({ target, log, onChange }: Props) {
   const [isAddOpen, setIsAddOpen] = useState(false);
 
   const [meal, setMeal] = useState<MealKey>("breakfast");
-  const [name, setName] = useState("");
   const [grams, setGrams] = useState("");
-  const [protein, setProtein] = useState("");
-  const [carbs, setCarbs] = useState("");
-  const [fat, setFat] = useState("");
 
-  const [templates, setTemplates] = useState<FoodTemplate[]>(() => loadFoodTemplates());
   const addFoodRef = useRef<HTMLDivElement | null>(null);
+  const [activeMeal, setActiveMeal] = useState<MealKey | null>(null);
+
+  // ----------- Food DB (default + saved MERGE) -----------
+  const [selectedFoodId, setSelectedFoodId] = useState<string>("");
+  const [query, setQuery] = useState("");
+
+  const [foodDb, setFoodDb] = useState<FoodDbItem[]>(() => {
+    const saved = loadFoodDb() ?? [];
+
+    // merge default + saved (id alapján)
+    const map = new Map<string, FoodDbItem>();
+    for (const x of defaultFoodDb) map.set(x.id, x);
+    for (const x of saved) map.set(x.id, x);
+
+    return Array.from(map.values());
+  });
+
+  const [newFoodName, setNewFoodName] = useState("");
+  const [newP, setNewP] = useState("");
+  const [newC, setNewC] = useState("");
+  const [newF, setNewF] = useState("");
 
   useEffect(() => {
-    saveFoodTemplates(templates);
-  }, [templates]);
+    saveFoodDb(foodDb);
+  }, [foodDb]);
 
+  const filteredFoods = useMemo(() => {
+    const q = normalize(query);
+
+    const list = q
+      ? foodDb.filter((x) => normalize(x.name).includes(q))
+      : foodDb;
+
+    return list
+      .slice()
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .slice(0, 500); // <<< emeltem 200 -> 500
+  }, [query, foodDb]);
+
+  const selectedFood = useMemo(() => {
+    return foodDb.find((x) => x.id === selectedFoodId) ?? null;
+  }, [foodDb, selectedFoodId]);
+
+  // ... a kódod innen mehet tovább változatlanul
+
+
+  // ----------- Targets per meal -----------
   const perMealTargets = useMemo(() => {
     const map: Record<MealKey, MacroTarget> = {
       breakfast: { proteinG: 0, carbsG: 0, fatG: 0, calories: 0 },
@@ -80,7 +118,7 @@ export default function FoodLogPanel({ target, log, onChange }: Props) {
     };
   }, [target, dayTotals]);
 
-  // --- Daily progress (kcal) ---
+  // ----------- Daily progress -----------
   const dailyKcalPct = percent(dayTotals.calories, target.calories);
   const dailyKcalBar = clamp01to100(dailyKcalPct);
   const dailyOver = dayTotals.calories - target.calories;
@@ -94,70 +132,75 @@ export default function FoodLogPanel({ target, log, onChange }: Props) {
       ? "dayProgressFill fillWarn"
       : "dayProgressFill fillBad";
 
+  // ----------- Actions -----------
   function addFood() {
-    const trimmed = name.trim();
-    if (!trimmed) return;
+    if (!selectedFood) return;
+
+    const g = grams.trim() ? clampNum(grams) : 0;
+    if (g <= 0) return;
+
+    const m = calcFromPer100(selectedFood.per100, g);
 
     const item: FoodItem = {
       id: uid(),
-      name: trimmed,
-      grams: grams.trim() ? clampNum(grams) : undefined,
-      protein: clampNum(protein),
-      carbs: clampNum(carbs),
-      fat: clampNum(fat),
+      name: selectedFood.name,
+      grams: g,
+      protein: m.protein,
+      carbs: m.carbs,
+      fat: m.fat,
     };
 
     const next = { ...log, [meal]: [...(log[meal] ?? []), item] };
     onChange(next);
 
-    setName("");
     setGrams("");
-    setProtein("");
-    setCarbs("");
-    setFat("");
-  }
-
-  function saveAsTemplate() {
-    const trimmed = name.trim();
-    if (!trimmed) return;
-
-    const t: FoodTemplate = {
-      name: trimmed,
-      grams: grams.trim() ? clampNum(grams) : undefined,
-      protein: clampNum(protein),
-      carbs: clampNum(carbs),
-      fat: clampNum(fat),
-    };
-
-    setTemplates((prev) => [t, ...prev.filter((x) => x.name.toLowerCase() !== t.name.toLowerCase())]);
-  }
-
-  function quickAddTemplate(t: FoodTemplate) {
-    const item: FoodItem = {
-      id: uid(),
-      name: t.name,
-      grams: t.grams,
-      protein: t.protein,
-      carbs: t.carbs,
-      fat: t.fat,
-    };
-
-    const next = { ...log, [meal]: [...(log[meal] ?? []), item] };
-    onChange(next);
+    setQuery("");
+    setSelectedFoodId("");
   }
 
   function jumpToMeal(m: MealKey) {
+    setActiveMeal(m);
     setMeal(m);
     setIsAddOpen(true);
 
-    // várjuk meg míg a panel megjelenik
     setTimeout(() => {
-      addFoodRef.current?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
-    }, 50);
+      addFoodRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 60);
   }
+  function addNewFoodToDb() {
+  const nm = newFoodName.trim();
+  if (!nm) return;
+
+  const p = clampNum(newP);
+  const c = clampNum(newC);
+  const f = clampNum(newF);
+
+  // egyszerű validáció: ne legyen mind 0
+  if (p <= 0 && c <= 0 && f <= 0) return;
+
+  const item: FoodDbItem = {
+    id: uid(),
+    name: nm,
+    per100: { protein: p, carbs: c, fat: f },
+  };
+
+  // duplikáció kezelése név alapján: ha van ilyen, cseréljük
+  setFoodDb((prev) => {
+    const key = normalize(nm);
+    const filtered = prev.filter((x) => normalize(x.name) !== key);
+    return [item, ...filtered];
+  });
+
+  // automatikusan kiválasztjuk, hogy 1 katt és mehet gramm + Add
+  setQuery(nm);
+  setSelectedFoodId(item.id);
+
+  setNewFoodName("");
+  setNewP("");
+  setNewC("");
+  setNewF("");
+}
+
 
   function removeFood(mealKey: MealKey, id: string) {
     const next = { ...log, [mealKey]: (log[mealKey] ?? []).filter((x) => x.id !== id) };
@@ -169,7 +212,7 @@ export default function FoodLogPanel({ target, log, onChange }: Props) {
       <div className="foodHeader">
         <div>
           <h2 style={{ margin: 0 }}>Food log</h2>
-          <div className="note">Add foods manually (macros), see daily totals and per-meal progress.</div>
+          <div className="note">Select food + grams. Macros are calculated automatically.</div>
         </div>
 
         <button className="btnPrimary" type="button" onClick={() => setIsAddOpen((v) => !v)}>
@@ -182,13 +225,17 @@ export default function FoodLogPanel({ target, log, onChange }: Props) {
         <div className="miniCard">
           <div className="miniTitle">Target</div>
           <div className="miniValue">{target.calories} kcal</div>
-          <div className="muted">🥩 {target.proteinG}g · 🍚 {target.carbsG}g · 🧈 {target.fatG}g</div>
+          <div className="muted">
+            🥩 {target.proteinG}g · 🍚 {target.carbsG}g · 🧈 {target.fatG}g
+          </div>
         </div>
 
         <div className="miniCard">
           <div className="miniTitle">Consumed</div>
           <div className="miniValue">{dayTotals.calories} kcal</div>
-          <div className="muted">🥩 {dayTotals.protein}g · 🍚 {dayTotals.carbs}g · 🧈 {dayTotals.fat}g</div>
+          <div className="muted">
+            🥩 {dayTotals.protein}g · 🍚 {dayTotals.carbs}g · 🧈 {dayTotals.fat}g
+          </div>
         </div>
 
         <div className="miniCard">
@@ -231,71 +278,105 @@ export default function FoodLogPanel({ target, log, onChange }: Props) {
             </label>
 
             <label>
-              Food name
-              <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. oats" />
-            </label>
-
-            <label>
-              Grams (optional)
+              Search food
               <input
-                value={grams}
-                onChange={(e) => setGrams(e.target.value)}
-                placeholder="e.g. 80"
-                inputMode="numeric"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="type e.g. chicken, rice..."
               />
             </label>
 
-            <div />
-
             <label>
-              Protein (g)
-              <input value={protein} onChange={(e) => setProtein(e.target.value)} inputMode="numeric" />
+              Select food
+<select value={selectedFoodId} onChange={(e) => setSelectedFoodId(e.target.value)}>
+  <option value="">— choose —</option>
+  {filteredFoods.map((f) => (
+    <option key={f.id} value={f.id}>
+      {f.name}
+    </option>
+  ))}
+</select>
+
+
             </label>
 
             <label>
-              Carbs (g)
-              <input value={carbs} onChange={(e) => setCarbs(e.target.value)} inputMode="numeric" />
+              Grams
+              <input
+                value={grams}
+                onChange={(e) => setGrams(e.target.value)}
+                placeholder="e.g. 150"
+                inputMode="numeric"
+              />
             </label>
+            <div className="divider" />
 
-            <label>
-              Fat (g)
-              <input value={fat} onChange={(e) => setFat(e.target.value)} inputMode="numeric" />
-            </label>
+<h2 style={{ marginTop: 0 }}>Add new food to database (per 100g)</h2>
+
+<div className="grid2">
+  <label>
+    Food name
+    <input
+      value={newFoodName}
+      onChange={(e) => setNewFoodName(e.target.value)}
+      placeholder="e.g. My brand protein bar"
+    />
+  </label>
+
+  <div />
+
+  <label>
+    Protein / 100g
+    <input value={newP} onChange={(e) => setNewP(e.target.value)} inputMode="numeric" />
+  </label>
+
+  <label>
+    Carbs / 100g
+    <input value={newC} onChange={(e) => setNewC(e.target.value)} inputMode="numeric" />
+  </label>
+
+  <label>
+    Fat / 100g
+    <input value={newF} onChange={(e) => setNewF(e.target.value)} inputMode="numeric" />
+  </label>
+</div>
+
+<div className="actionsRow" style={{ marginTop: 10 }}>
+  <button className="btnGhost" type="button" onClick={addNewFoodToDb}>
+    Save to database
+  </button>
+</div>
+
+<div className="note" style={{ marginTop: 6 }}>
+  Tip: add per-100g values from the nutrition label. Then select grams above.
+</div>
+
           </div>
 
+          {selectedFood && grams.trim() && clampNum(grams) > 0 && (
+            <div className="miniCard" style={{ marginTop: 12 }}>
+              {(() => {
+                const g = clampNum(grams);
+                const m = calcFromPer100(selectedFood.per100, g);
+                return (
+                  <>
+                    <div className="miniTitle">Preview</div>
+                    <div className="miniValue">
+                      {selectedFood.name} ({g}g) — {m.calories} kcal
+                    </div>
+                    <div className="muted">
+                      🥩 {m.protein}g · 🍚 {m.carbs}g · 🧈 {m.fat}g
+                    </div>
+                  </>
+                );                
+              })()}
+            </div>            
+          )}
           <div className="actionsRow" style={{ marginTop: 10 }}>
-            <button className="btnPrimary" type="button" onClick={addFood}>
+            <button className="btnPrimary" type="button" onClick={addFood} disabled={!selectedFood}>
               Add
             </button>
-            <button className="btnGhost" type="button" onClick={saveAsTemplate}>
-              Save as template
-            </button>
           </div>
-
-          {templates.length > 0 && (
-            <>
-              <div className="divider" />
-              <div>
-                <strong>Templates (quick add)</strong>
-                <div className="pills">
-                  {templates.slice(0, 18).map((t, idx) => (
-                    <button
-                      key={`${t.name}-${idx}`}
-                      type="button"
-                      className="chip"
-                      onClick={() => quickAddTemplate(t)}
-                      title={`🥩 ${t.protein}g · 🍚 ${t.carbs}g · 🧈 ${t.fat}g`}
-                    >
-                      {t.name}
-                    </button>
-                  ))}
-                </div>
-                <div className="note" style={{ marginTop: 6 }}>
-                  Tip: choose a meal first, then tap a template.
-                </div>
-              </div>
-            </>
-          )}
         </div>
       )}
 
@@ -323,7 +404,7 @@ export default function FoodLogPanel({ target, log, onChange }: Props) {
         return (
           <div
             key={key}
-            className="mealCard"
+            className={`mealCard ${isAddOpen && activeMeal === key ? "isActive" : ""}`}
             role="button"
             tabIndex={0}
             onClick={() => jumpToMeal(key)}

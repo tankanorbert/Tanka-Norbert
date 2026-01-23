@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState} from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import "./App.css";
 
 import { calculateBMR, calculateTDEE, activityLevels } from "./utils/calorie";
@@ -31,11 +31,16 @@ function App() {
 
   // Collapsibles
   const [showInputs, setShowInputs] = useState(true);
-  const [showCalories, setShowCalories] = useState(true);
+  const [showCalories, setShowCalories] = useState(false);
+  const [showFoodLog, setShowFoodLog] = useState(false);
 
   // Results
   const [result, setResult] = useState<number | null>(null);
   const [goal, setGoal] = useState<"cut" | "maint" | "bulk">(loadGoal());
+
+  // Scroll helpers
+  const caloriesRef = useRef<HTMLDivElement | null>(null);
+  const hasCalculatedOnce = useRef(false);
 
   // ----------- DAY / LOG BY DATE -----------
   const todayId = formatDateId(new Date());
@@ -72,14 +77,31 @@ function App() {
     setSavedDays(listSavedFoodLogDays());
   }, [dateId, foodLog]);
 
+  // Calculate után: nyissa a Calories-t + első alkalommal scroll
+  useEffect(() => {
+    if (!result) return;
+
+    setShowCalories(true);
+
+    // ha szeretnéd, hogy a Food log is automatikusan nyíljon:
+    // setShowFoodLog(true);
+
+    if (!hasCalculatedOnce.current) {
+      hasCalculatedOnce.current = true;
+
+      setTimeout(() => {
+        caloriesRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "nearest",
+        });
+      }, 80);
+    }
+  }, [result]);
+
   // ----------- CALC HELPERS -----------
   const maintenanceCalories = result ? Math.round(result) : null;
   const cutCalories = result ? Math.max(1200, Math.round(result - 500)) : null;
   const bulkCalories = result ? Math.round(result + 300) : null;
-  const isMobile = window.innerWidth < 640;
-  const [showFoodLog, setShowFoodLog] = useState(!isMobile);
-
-
 
   const maintenanceMacros = useMemo(
     () => (maintenanceCalories ? calculateMacros(maintenanceCalories, weight) : null),
@@ -87,11 +109,7 @@ function App() {
   );
 
   const cutMacros = useMemo(
-    () =>
-      cutCalories
-        ? // Ha a calculateMacros nálad nem fogad 3. paramétert, töröld a ", 50"-et:
-          calculateMacros(cutCalories, weight, 50)
-        : null,
+    () => (cutCalories ? calculateMacros(cutCalories, weight, 50) : null),
     [cutCalories, weight]
   );
 
@@ -130,6 +148,9 @@ function App() {
     setResult(tdee);
 
     saveData({ weight, height, age, gender, activity });
+
+    // opcionális: ha calculate után nyíljon a food log is:
+    // setShowFoodLog(true);
   }
 
   return (
@@ -141,7 +162,6 @@ function App() {
         <h2>Day</h2>
 
         <div className="dayPanel">
-          {/* Top row */}
           <div className="dayTopRow">
             <div className="dayQuick">
               <button className="chip" type="button" onClick={() => setDateId(formatDateId(new Date()))}>
@@ -167,7 +187,6 @@ function App() {
             </label>
           </div>
 
-          {/* Current day + actions */}
           <div className="daySecondRow">
             <div className="muted">
               Current day: <strong>{dateId}</strong>
@@ -200,7 +219,6 @@ function App() {
             </div>
           </div>
 
-          {/* Saved days */}
           {savedDays.length > 0 && (
             <div className="savedBox">
               <strong>Saved days</strong>
@@ -229,73 +247,78 @@ function App() {
       {/* ---------------- INPUTS (collapsible) ---------------- */}
       <div className="panel">
         <button
-  className="panelHeader"
-  type="button"
-  aria-expanded={showInputs}
-  onClick={() => setShowInputs((v) => !v)}
->
-  <h2>Inputs</h2>
-  <span className="chevron">{showInputs ? "▲" : "▼"}</span>
-</button>
+          className="panelHeader"
+          type="button"
+          aria-expanded={showInputs}
+          onClick={() => setShowInputs((v) => !v)}
+        >
+          <h2>Inputs</h2>
+          <span className="chevron">{showInputs ? "▲" : "▼"}</span>
+        </button>
 
-        {showInputs && (
-          <div className="panelBody">
-            <label>
-              Weight (kg)
-              <input type="number" value={weight} onChange={(e) => setWeight(Number(e.target.value))} />
-            </label>
+        <div className={`collapse ${showInputs ? "open" : ""}`} style={{ maxHeight: showInputs ? 900 : 0 }}>
+          <div className="collapseInner">
+            <div className="grid2">
+              <label>
+                Weight (kg)
+                <input type="number" value={weight} onChange={(e) => setWeight(Number(e.target.value))} />
+              </label>
 
-            <label>
-              Height (cm)
-              <input type="number" value={height} onChange={(e) => setHeight(Number(e.target.value))} />
-            </label>
+              <label>
+                Height (cm)
+                <input type="number" value={height} onChange={(e) => setHeight(Number(e.target.value))} />
+              </label>
 
-            <label>
-              Age
-              <input type="number" value={age} onChange={(e) => setAge(Number(e.target.value))} />
-            </label>
+              <label>
+                Age
+                <input type="number" value={age} onChange={(e) => setAge(Number(e.target.value))} />
+              </label>
 
-            <label>
-              Gender
-              <select value={gender} onChange={(e) => setGender(e.target.value as any)}>
-                <option value="male">Male</option>
-                <option value="female">Female</option>
-              </select>
-            </label>
+              <label>
+                Gender
+                <select value={gender} onChange={(e) => setGender(e.target.value as any)}>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                </select>
+              </label>
 
-            <label>
-              Activity
-              <select value={activity} onChange={(e) => setActivity(Number(e.target.value))}>
-                <option value={activityLevels.sedentary}>Sedentary</option>
-                <option value={activityLevels.light}>Light</option>
-                <option value={activityLevels.moderate}>Moderate</option>
-                <option value={activityLevels.active}>Active</option>
-                <option value={activityLevels.veryActive}>Very active</option>
-              </select>
-            </label>
+              <label>
+                Activity
+                <select value={activity} onChange={(e) => setActivity(Number(e.target.value))}>
+                  <option value={activityLevels.sedentary}>Sedentary</option>
+                  <option value={activityLevels.light}>Light</option>
+                  <option value={activityLevels.moderate}>Moderate</option>
+                  <option value={activityLevels.active}>Active</option>
+                  <option value={activityLevels.veryActive}>Very active</option>
+                </select>
+              </label>
 
-            <button onClick={calculate}>Calculate</button>
+              <div style={{ display: "flex", alignItems: "end" }}>
+                <button className="btnPrimary" type="button" onClick={calculate} style={{ width: "100%" }}>
+                  Calculate
+                </button>
+              </div>
+            </div>
           </div>
-        )}
+        </div>
       </div>
 
-      {/* ---------------- CALORIES (collapsible) + FOOD LOG ---------------- */}
-      {result && (
-        <>
-          <div className="panel">
-            <button
-  className="panelHeader"
-  type="button"
-  aria-expanded={showCalories}
-  onClick={() => setShowCalories((v) => !v)}
->
-  <h2>Calories</h2>
-  <span className="chevron">{showCalories ? "▲" : "▼"}</span>
-</button>
+      {/* ---------------- CALORIES (always visible header) ---------------- */}
+      <div className="panel" ref={caloriesRef}>
+        <button
+          className="panelHeader"
+          type="button"
+          aria-expanded={showCalories}
+          onClick={() => setShowCalories((v) => !v)}
+        >
+          <h2>Calories</h2>
+          <span className="chevron">{showCalories ? "▲" : "▼"}</span>
+        </button>
 
-
-            {showCalories && (
-              <div className="panelBody">
+        <div className={`collapse ${showCalories ? "open" : ""}`} style={{ maxHeight: showCalories ? 900 : 0 }}>
+          <div className="collapseInner">
+            {result ? (
+              <>
                 <div className="kpi">
                   <div className="kpiCard">
                     <div className="kpiTitle">Maintenance</div>
@@ -330,36 +353,40 @@ function App() {
                     <option value="bulk">Muscle gain</option>
                   </select>
                 </label>
-              </div>
+              </>
+            ) : (
+              <p className="muted">
+                Press <strong>Calculate</strong> to see calories.
+              </p>
             )}
           </div>
-
-          {foodTarget && (
-  <div className="panel">
-    <button
-      className="panelHeader"
-      type="button"
-      aria-expanded={showFoodLog}
-      onClick={() => setShowFoodLog((v) => !v)}
-    >
-      <h2>Food log</h2>
-      <span className="chevron">{showFoodLog ? "▲" : "▼"}</span>
-    </button>
-
-    {showFoodLog && (
-      <div className="panelBody">
-        <FoodLogPanel
-          target={foodTarget}
-          log={foodLog}
-          onChange={(next) => setFoodLog(next)}
-        />
+        </div>
       </div>
-    )}
-  </div>
-)}
 
-        </>
-      )}
+      {/* ---------------- FOOD LOG (always visible header) ---------------- */}
+      <div className="panel">
+        <button
+          className="panelHeader"
+          type="button"
+          aria-expanded={showFoodLog}
+          onClick={() => setShowFoodLog((v) => !v)}
+        >
+          <h2>Food log</h2>
+          <span className="chevron">{showFoodLog ? "▲" : "▼"}</span>
+        </button>
+
+        <div className={`collapse ${showFoodLog ? "open" : ""}`} style={{ maxHeight: showFoodLog ? 9999 : 0 }}>
+          <div className="collapseInner">
+            {foodTarget ? (
+              <FoodLogPanel target={foodTarget} log={foodLog} onChange={(next) => setFoodLog(next)} />
+            ) : (
+              <p className="muted">
+                Calculate + choose a goal to enable the food log.
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

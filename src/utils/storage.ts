@@ -1,9 +1,23 @@
 import type { MealKey } from "./meals";
 import type { FoodItem } from "./food";
+import type { FoodDbItem } from "./foodDb";
 
 // -------------------- USER INPUTS (weight/height/age/gender/activity) --------------------
 const DATA_KEY = "calorieData_v1";
+const FOOD_DB_KEY = "foodDb_v1";
 
+export function loadFoodDb(): FoodDbItem[] | null {
+  try {
+    const raw = localStorage.getItem(FOOD_DB_KEY);
+    return raw ? (JSON.parse(raw) as FoodDbItem[]) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function saveFoodDb(items: FoodDbItem[]) {
+  localStorage.setItem(FOOD_DB_KEY, JSON.stringify(items));
+}
 export type StoredData = {
   weight: number;
   height: number;
