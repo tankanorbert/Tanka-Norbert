@@ -7,7 +7,7 @@ import { totals, uid } from "../utils/food";
 import { defaultFoodDb, calcFromPer100, normalize } from "../utils/foodDb";
 import type { FoodDbItem } from "../utils/foodDb";
 import { loadFoodDb, saveFoodDb } from "../utils/storage";
-
+import BarcodeScanner from "./BarcodeScanner";
 type MacroTarget = { proteinG: number; carbsG: number; fatG: number; calories: number };
 
 type Props = {
@@ -37,6 +37,9 @@ export default function FoodLogPanel({ target, log, onChange }: Props) {
 
   const addFoodRef = useRef<HTMLDivElement | null>(null);
   const [activeMeal, setActiveMeal] = useState<MealKey | null>(null);
+  const[isScannerOpen, setIsScannerOpen] = useState(false);
+  const [pendingBarcode, setPendingBarcode] = useState<string>("");
+  
 
   // ----------- Food DB (default + saved MERGE) -----------
   const [selectedFoodId, setSelectedFoodId] = useState<string>("");
@@ -52,6 +55,8 @@ export default function FoodLogPanel({ target, log, onChange }: Props) {
 
     return Array.from(map.values());
   });
+  const [openConsumed, setOpenConsumed] = useState(false);
+
 
   const [newFoodName, setNewFoodName] = useState("");
   const [newP, setNewP] = useState("");
@@ -131,8 +136,63 @@ export default function FoodLogPanel({ target, log, onChange }: Props) {
       : dailyKcalPct <= 110
       ? "dayProgressFill fillWarn"
       : "dayProgressFill fillBad";
+  //const [showConsumed, setShowConsumed] = useState(false);
+
+const allItems = useMemo(() => Object.values(log).flat(), [log]);
+
+const consumedByItem = useMemo(() => {
+  // tételes lista: minden étel + kiszámolt kcal
+  return allItems.map((x) => ({
+    id: x.id,
+    name: x.name,
+    grams: x.grams,
+    protein: x.protein,
+    carbs: x.carbs,
+    fat: x.fat,
+    calories: Math.round(x.protein * 4 + x.carbs * 4 + x.fat * 9),
+  }));
+}, [allItems]);
+
+const consumedMacroTotals = useMemo(() => {
+  // makrónként: miből mennyit vittél be
+  const totals = { protein: 0, carbs: 0, fat: 0, calories: 0 };
+  for (const x of consumedByItem) {
+    totals.protein += x.protein;
+    totals.carbs += x.carbs;
+    totals.fat += x.fat;
+    totals.calories += x.calories;
+  }
+  return {
+    protein: Math.round(totals.protein),
+    carbs: Math.round(totals.carbs),
+    fat: Math.round(totals.fat),
+    calories: Math.round(totals.calories),
+  };
+}, [consumedByItem]);
+
 
   // ----------- Actions -----------
+  function onBarcodeDetected(code: string) {
+  setIsScannerOpen(false);
+
+  const found = foodDb.find((x) => x.barcode === code) ?? null;
+
+  if (found) {
+    setSelectedFoodId(found.id);
+    setQuery(found.name);
+    setPendingBarcode("");
+    return;
+  }
+
+  // új termék: eltesszük a vonalkódot
+  setPendingBarcode(code);
+  setNewFoodName("");
+  setNewP("");
+  setNewC("");
+  setNewF("");
+}
+
+
   function addFood() {
     if (!selectedFood) return;
 
@@ -214,10 +274,18 @@ export default function FoodLogPanel({ target, log, onChange }: Props) {
           <h2 style={{ margin: 0 }}>Food log</h2>
           <div className="note">Select food + grams. Macros are calculated automatically.</div>
         </div>
-
+     <button
+  className="btnGhost"
+  type="button"
+  onClick={() => setIsScannerOpen(true)}
+>
+  📷 Scan barcode
+</button>
         <button className="btnPrimary" type="button" onClick={() => setIsAddOpen((v) => !v)}>
           {isAddOpen ? "Close" : "➕ Add food"}
         </button>
+   
+
       </div>
 
       {/* Daily summary */}
@@ -230,13 +298,77 @@ export default function FoodLogPanel({ target, log, onChange }: Props) {
           </div>
         </div>
 
-        <div className="miniCard">
-          <div className="miniTitle">Consumed</div>
-          <div className="miniValue">{dayTotals.calories} kcal</div>
-          <div className="muted">
-            🥩 {dayTotals.protein}g · 🍚 {dayTotals.carbs}g · 🧈 {dayTotals.fat}g
-          </div>
+        <div className="miniCard miniCardCollapsible">
+  <button
+    type="button"
+    className="miniCardHeaderBtn"
+    aria-expanded={openConsumed}
+    onClick={() => setOpenConsumed((v) => !v)}
+  >
+    <div>
+      <div className="miniTitle">Consumed</div>
+      <div className="miniValue">{dayTotals.calories} kcal</div>
+      <div className="muted">
+        🥩 {dayTotals.protein}g · 🍚 {dayTotals.carbs}g · 🧈 {dayTotals.fat}g
+      </div>
+    </div>
+
+    <span className="chev">{openConsumed ? "▲" : "▼"}</span>
+  </button>
+
+  <div className={`miniCollapse ${openConsumed ? "open" : ""}`}>
+    <div className="miniCollapseInner">
+      <div className="miniListTitle">Items today</div>
+
+      {Object.keys(mealLabels).every((k) => (log[k as MealKey] ?? []).length === 0) ? (
+        <div className="note">No foods yet.</div>
+      ) : (
+        <div className="consumedList">
+          {Object.keys(mealLabels).map((k) => {
+            const mk = k as MealKey;
+            const items = log[mk] ?? [];
+            if (items.length === 0) return null;
+
+            return (
+              <div key={mk} className="consumedGroup">
+                <div className="consumedGroupTitle">{mealLabels[mk]}</div>
+
+                {items.map((x) => (
+                  <div key={x.id} className="consumedRow">
+                    <div className="consumedLeft">
+                      <div className="consumedName">
+                        {x.name}
+                        {typeof x.grams === "number" ? ` (${x.grams}g)` : ""}
+                      </div>
+                      <div className="consumedMacros">
+                        🥩 {x.protein}g · 🍚 {x.carbs}g · 🧈 {x.fat}g · {Math.round(x.protein * 4 + x.carbs * 4 + x.fat * 9)} kcal
+                      </div>
+                    </div>
+
+                    <button
+                      className="iconBtn"
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeFood(mk, x.id);
+                      }}
+                      aria-label="Remove"
+                      title="Remove"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            );
+          })}
         </div>
+      )}
+    </div>
+  </div>
+</div>
+
+
 
         <div className="miniCard">
           <div className="miniTitle">Remaining</div>
@@ -410,7 +542,9 @@ export default function FoodLogPanel({ target, log, onChange }: Props) {
             onClick={() => jumpToMeal(key)}
             onKeyDown={(e) => {
               if (e.key === "Enter" || e.key === " ") jumpToMeal(key);
+              
             }}
+            
           >
             <div className="mealTop">
               <div className="mealName">{mealLabels[key]}</div>
@@ -497,6 +631,11 @@ export default function FoodLogPanel({ target, log, onChange }: Props) {
           </div>
         );
       })}
+      <BarcodeScanner
+  isActive={isScannerOpen}
+  onDetected={onBarcodeDetected}
+  onClose={() => setIsScannerOpen(false)}
+/>
     </div>
   );
 }

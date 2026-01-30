@@ -194,7 +194,8 @@ button:hover{
   box-shadow: 0 0 0 4px rgba(124,58,237,.14);
 }
 
-/* Collapsible panel header (Inputs / Calories / Food log) */
+/* ================= COLLAPSIBLE PANELS ================= */
+/* header */
 .panelHeader{
   width: 100%;
   display: flex;
@@ -228,29 +229,30 @@ button:hover{
   opacity: 1;
 }
 
-/* Smooth collapsible body */
+/* body (IMPORTANT: closed state has ZERO padding/border) */
 .collapse{
   overflow: hidden;
-  max-height: 0px;
+  max-height: 0;
   opacity: 0;
   transform: translateY(-4px);
   transition: max-height 260ms ease, opacity 200ms ease, transform 200ms ease;
   will-change: max-height, opacity, transform;
 }
 
+/* we do NOT set max-height here, JS sets it inline */
 .collapse.open{
   opacity: 1;
   transform: translateY(0);
-  max-height: 9999px;
 }
 
+/* inner only when open: avoid “empty box” when closed */
 .collapseInner{
   padding-top: 12px;
   border-top: 1px solid rgba(255,255,255,.10);
   margin-top: 12px;
-  padding-bottom: 14px; /* <- EZ segít a legutolsó kártyán */
+  padding-bottom: 14px;
 }
-
+/* ====================================================== */
 
 /* Calories KPI cards */
 .kpi{
@@ -316,9 +318,7 @@ button:hover{
 
 /* Mobile day layout */
 @media (max-width: 640px) {
-  .dayTopRow{
-    grid-template-columns: 1fr;
-  }
+  .dayTopRow{ grid-template-columns: 1fr; }
 
   .daySecondRow{
     flex-direction: column;
@@ -335,7 +335,7 @@ button:hover{
   }
 }
 
-/* Food log */
+/* ================= FOOD LOG ================= */
 .foodHeader{
   display:flex;
   justify-content: space-between;
@@ -375,29 +375,20 @@ button:hover{
   position: relative;
 }
 
-/* --- Meal card highlight (always visible, overflow-safe) --- */
-.mealCard {
-  position: relative; /* kell a ::before-hoz */
-  border-radius: 18px; /* legyen fix (vagy ami nálad van) */
-}
-
-/* ha kiemelt állapotot akarsz (pl. kattintás / fókusz) */
+/* highlight ring only when active/focus */
 .mealCard.isActive::before,
-.mealCard:focus-visible::before {
+.mealCard:focus-visible::before{
   content: "";
   position: absolute;
-  inset: 0;                 /* teljesen körbe */
-  border-radius: inherit;   /* ugyanaz a kerekítés */
+  inset: 0;
+  border-radius: inherit;
   pointer-events: none;
-
-  /* belső lila keret + nagyon finom glow */
   box-shadow:
     inset 0 0 0 2px rgba(124,58,237,.85),
     inset 0 0 0 1px rgba(255,255,255,.08);
 }
 
-/* opcionális: hover-nél finom jelzés */
-.mealCard:hover::before {
+.mealCard:hover::before{
   content: "";
   position: absolute;
   inset: 0;
@@ -475,6 +466,12 @@ button:hover{
   border-color: rgba(239,68,68,.55);
 }
 
+/* Divider */
+.divider{
+  border-top: 1px solid var(--border);
+  margin: 12px 0;
+}
+
 /* Progress bars (kcal) */
 .progressWrap{
   height: 10px;
@@ -487,7 +484,6 @@ button:hover{
 
 .progressBar{
   height: 100%;
-  width: 0%;
   border-radius: 999px;
 }
 
@@ -525,7 +521,7 @@ button:hover{
 .fillWarn{ background: rgba(245,158,11,.9); }
 .fillBad{ background: rgba(239,68,68,.9); }
 
-/* Mini macro progress bars (Protein/Carbs/Fat) */
+/* Mini macro progress bars */
 .miniBars{
   display: grid;
   gap: 8px;
@@ -555,17 +551,150 @@ button:hover{
 .fillProtein{ background: rgba(59,130,246,.95); }
 .fillCarbs{ background: rgba(245,158,11,.95); }
 .fillFat{ background: rgba(239,68,68,.95); }
+/* ================= END FOOD LOG ================= */
 
-/* Divider */
-.divider{
-  border-top: 1px solid var(--border);
-  margin: 12px 0;
+/* Consumed mini collapse inside cards (ha használod) */
+.cardHeaderBtn{
+  width: 100%;
+  display:flex;
+  align-items:center;
+  justify-content: space-between;
+  gap: 12px;
+  background: transparent;
+  border: none;
+  color: inherit;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
 }
 
-.foodLogPanel {
-  padding-bottom: 16px;
+.miniCardCollapsible{
+  padding: 0;
+  overflow: hidden;
 }
 
+.miniCardHeaderBtn{
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
 
+  padding: 12px;
+  background: transparent;
+  border: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
 
+.miniCardHeaderBtn:hover{
+  background: rgba(255,255,255,.03);
+}
+
+.chev{
+  opacity: .8;
+  font-weight: 900;
+  padding-top: 4px;
+}
+
+.miniCollapse{
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  transform: translateY(-4px);
+  transition: max-height 260ms ease, opacity 200ms ease, transform 200ms ease;
+}
+
+.miniCollapse.open{
+  opacity: 1;
+  transform: translateY(0);
+  max-height: 520px;
+}
+
+.miniCollapseInner{
+  border-top: 1px solid rgba(255,255,255,.10);
+  padding: 12px;
+}
+
+.miniListTitle{
+  font-size: 12px;
+  opacity: .75;
+  font-weight: 800;
+  margin-bottom: 10px;
+}
+
+.consumedList{
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.consumedRow{
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+
+  padding: 10px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,.08);
+  background: rgba(255,255,255,.04);
+}
+
+.consumedName{
+  font-weight: 800;
+  font-size: 13px;
+}
+
+.consumedMacros{
+  font-size: 12px;
+  opacity: .75;
+  margin-top: 2px;
+}
+
+.scanOverlay{
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.55);
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  z-index: 9999;
+}
+
+.scanCard{
+  width: min(520px, 100%);
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 18px;
+  background: rgba(15,23,42,.92);
+  box-shadow: 0 18px 60px rgba(0,0,0,.5);
+  backdrop-filter: blur(10px);
+  padding: 14px;
+}
+
+.scanTop{
+  display:flex;
+  align-items:center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.scanBox{
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.04);
+}
+
+.scanBox video, .scanBox canvas{
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover;
+}
 

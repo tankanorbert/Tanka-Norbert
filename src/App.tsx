@@ -3,8 +3,8 @@ import "./App.css";
 
 import { calculateBMR, calculateTDEE, activityLevels } from "./utils/calorie";
 import { calculateMacros } from "./utils/macros";
-
 import FoodLogPanel from "./components/FoodLogPanel";
+//import BarcodeScanner from "./components/BarcodeScanner";
 
 import {
   saveData,
@@ -20,6 +20,39 @@ import {
   clearFoodLogByDate,
 } from "./utils/storage";
 import type { FoodLog } from "./utils/storage";
+
+/**
+ * Smooth collapsible helper:
+ * - measures inner content height and returns maxHeight in px
+ * - recalculates when open/deps change
+ */
+function useCollapseHeight(open: boolean, deps: unknown[] = []) {
+  const innerRef = useRef<HTMLDivElement | null>(null);
+  const [h, setH] = useState(0);
+
+  useEffect(() => {
+    if (!open) {
+      setH(0);
+      return;
+    }
+    const el = innerRef.current;
+    if (!el) return;
+
+    const measure = () => setH(el.scrollHeight);
+
+    measure();
+
+    // content can change after first render (fonts, images, async)
+    const ro = new ResizeObserver(() => measure());
+    ro.observe(el);
+
+    return () => ro.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, ...deps]);
+
+  return { innerRef, maxHeightPx: `${h}px` };
+}
+
 
 function App() {
   // ----------- INPUTS -----------
@@ -39,7 +72,7 @@ function App() {
   const [goal, setGoal] = useState<"cut" | "maint" | "bulk">(loadGoal());
 
   // Scroll helpers
-  const caloriesRef = useRef<HTMLDivElement | null>(null);
+  const caloriesPanelRef = useRef<HTMLDivElement | null>(null);
   const hasCalculatedOnce = useRef(false);
 
   // ----------- DAY / LOG BY DATE -----------
@@ -52,6 +85,8 @@ function App() {
   });
 
   const [savedDays, setSavedDays] = useState<string[]>(() => listSavedFoodLogDays());
+
+
 
   // Load saved inputs once
   useEffect(() => {
@@ -76,27 +111,6 @@ function App() {
     saveFoodLogByDate(dateId, foodLog);
     setSavedDays(listSavedFoodLogDays());
   }, [dateId, foodLog]);
-
-  // Calculate után: nyissa a Calories-t + első alkalommal scroll
-  useEffect(() => {
-    if (!result) return;
-
-    setShowCalories(true);
-
-    // ha szeretnéd, hogy a Food log is automatikusan nyíljon:
-    // setShowFoodLog(true);
-
-    if (!hasCalculatedOnce.current) {
-      hasCalculatedOnce.current = true;
-
-      setTimeout(() => {
-        caloriesRef.current?.scrollIntoView({
-          behavior: "smooth",
-          block: "nearest",
-        });
-      }, 80);
-    }
-  }, [result]);
 
   // ----------- CALC HELPERS -----------
   const maintenanceCalories = result ? Math.round(result) : null;
@@ -148,10 +162,35 @@ function App() {
     setResult(tdee);
 
     saveData({ weight, height, age, gender, activity });
-
-    // opcionális: ha calculate után nyíljon a food log is:
-    // setShowFoodLog(true);
   }
+  
+
+  // Calculate után: nyissa a Calories-t + első alkalommal scroll
+  useEffect(() => {
+    if (!result) return;
+
+    setShowCalories(true);
+
+    // ha akarod: calculate után automatikusan nyíljon a Food log is
+    // setShowFoodLog(true);
+
+    if (!hasCalculatedOnce.current) {
+      hasCalculatedOnce.current = true;
+
+      setTimeout(() => {
+        caloriesPanelRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "nearest",
+        });
+      }, 120);
+    }
+  }, [result]);
+  
+
+  // ----------- Smooth heights (measured) -----------
+  const inputsCollapse = useCollapseHeight(showInputs, [weight, height, age, gender, activity]);
+  const caloriesCollapse = useCollapseHeight(showCalories, [result, goal, maintenanceCalories, cutCalories, bulkCalories]);
+  const foodCollapse = useCollapseHeight(showFoodLog, [!!foodTarget, dateId, foodLog]);
 
   return (
     <div className="container">
@@ -256,8 +295,8 @@ function App() {
           <span className="chevron">{showInputs ? "▲" : "▼"}</span>
         </button>
 
-        <div className={`collapse ${showInputs ? "open" : ""}`} style={{ maxHeight: showInputs ? 900 : 0 }}>
-          <div className="collapseInner">
+        <div className={`collapse ${showInputs ? "open" : ""}`} style={{ maxHeight: inputsCollapse.maxHeightPx }}>
+          <div ref={inputsCollapse.innerRef} className="collapseInner">
             <div className="grid2">
               <label>
                 Weight (kg)
@@ -303,8 +342,8 @@ function App() {
         </div>
       </div>
 
-      {/* ---------------- CALORIES (always visible header) ---------------- */}
-      <div className="panel" ref={caloriesRef}>
+      {/* ---------------- CALORIES (header always visible) ---------------- */}
+      <div className="panel" ref={caloriesPanelRef}>
         <button
           className="panelHeader"
           type="button"
@@ -315,8 +354,8 @@ function App() {
           <span className="chevron">{showCalories ? "▲" : "▼"}</span>
         </button>
 
-        <div className={`collapse ${showCalories ? "open" : ""}`} style={{ maxHeight: showCalories ? 900 : 0 }}>
-          <div className="collapseInner">
+        <div className={`collapse ${showCalories ? "open" : ""}`} style={{ maxHeight: caloriesCollapse.maxHeightPx }}>
+          <div ref={caloriesCollapse.innerRef} className="collapseInner">
             {result ? (
               <>
                 <div className="kpi">
@@ -363,7 +402,7 @@ function App() {
         </div>
       </div>
 
-      {/* ---------------- FOOD LOG (always visible header) ---------------- */}
+      {/* ---------------- FOOD LOG (header always visible) ---------------- */}
       <div className="panel">
         <button
           className="panelHeader"
@@ -375,14 +414,12 @@ function App() {
           <span className="chevron">{showFoodLog ? "▲" : "▼"}</span>
         </button>
 
-        <div className={`collapse ${showFoodLog ? "open" : ""}`} style={{ maxHeight: showFoodLog ? 9999 : 0 }}>
-          <div className="collapseInner">
+        <div className={`collapse ${showFoodLog ? "open" : ""}`} style={{ maxHeight: foodCollapse.maxHeightPx }}>
+          <div ref={foodCollapse.innerRef} className="collapseInner">
             {foodTarget ? (
               <FoodLogPanel target={foodTarget} log={foodLog} onChange={(next) => setFoodLog(next)} />
             ) : (
-              <p className="muted">
-                Calculate + choose a goal to enable the food log.
-              </p>
+              <p className="muted">Calculate + choose a goal to enable the food log.</p>
             )}
           </div>
         </div>
