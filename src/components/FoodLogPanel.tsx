@@ -1,20 +1,15 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import type { MealKey } from "../utils/meals";
-import { mealLabels, mealShares6 } from "../utils/meals";
-import type { FoodItem } from "../utils/food";
-import { totals, uid } from "../utils/food";
+import { useEffect, useMemo, useRef, useState } from "react"; import type { MealKey } from "../utils/meals"; import { mealLabels, mealShares6 } from "../utils/meals"; import type { FoodItem } from "../utils/food"; import { totals, uid } from "../utils/food";
 
-import { defaultFoodDb, calcFromPer100, normalize } from "../utils/foodDb";
-import type { FoodDbItem } from "../utils/foodDb";
-import { loadFoodDb, saveFoodDb } from "../utils/storage";
+import { defaultFoodDb, calcFromPer100, normalize } from "../utils/foodDb"; import type { FoodDbItem } from "../utils/foodDb"; import { loadFoodDb, saveFoodDb } from "../utils/storage";
+
 import BarcodeScanner from "./BarcodeScanner";
+
 type MacroTarget = { proteinG: number; carbsG: number; fatG: number; calories: number };
 
 type Props = {
   target: MacroTarget;
   log: Record<MealKey, FoodItem[]>;
-  onChange: (next: Record<MealKey, FoodItem[]>) => void;
-};
+  onChange: (next: Record<MealKey, FoodItem[]>) => void; };
 
 function clampNum(v: string) {
   const n = Number(v);
@@ -26,8 +21,7 @@ function clamp01to100(v: number) {
 }
 
 function percent(consumed: number, target: number) {
-  return target <= 0 ? 0 : Math.round((consumed / target) * 100);
-}
+  return target <= 0 ? 0 : Math.round((consumed / target) * 100); }
 
 export default function FoodLogPanel({ target, log, onChange }: Props) {
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -37,9 +31,10 @@ export default function FoodLogPanel({ target, log, onChange }: Props) {
 
   const addFoodRef = useRef<HTMLDivElement | null>(null);
   const [activeMeal, setActiveMeal] = useState<MealKey | null>(null);
-  const[isScannerOpen, setIsScannerOpen] = useState(false);
+
+  // Scanner
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [pendingBarcode, setPendingBarcode] = useState<string>("");
-  
 
   // ----------- Food DB (default + saved MERGE) -----------
   const [selectedFoodId, setSelectedFoodId] = useState<string>("");
@@ -55,9 +50,10 @@ export default function FoodLogPanel({ target, log, onChange }: Props) {
 
     return Array.from(map.values());
   });
+
   const [openConsumed, setOpenConsumed] = useState(false);
 
-
+  // Manual add to DB
   const [newFoodName, setNewFoodName] = useState("");
   const [newP, setNewP] = useState("");
   const [newC, setNewC] = useState("");
@@ -69,23 +65,17 @@ export default function FoodLogPanel({ target, log, onChange }: Props) {
 
   const filteredFoods = useMemo(() => {
     const q = normalize(query);
-
-    const list = q
-      ? foodDb.filter((x) => normalize(x.name).includes(q))
-      : foodDb;
+    const list = q ? foodDb.filter((x) => normalize(x.name).includes(q)) : foodDb;
 
     return list
       .slice()
       .sort((a, b) => a.name.localeCompare(b.name))
-      .slice(0, 500); // <<< emeltem 200 -> 500
+      .slice(0, 500);
   }, [query, foodDb]);
 
   const selectedFood = useMemo(() => {
     return foodDb.find((x) => x.id === selectedFoodId) ?? null;
   }, [foodDb, selectedFoodId]);
-
-  // ... a kódod innen mehet tovább változatlanul
-
 
   // ----------- Targets per meal -----------
   const perMealTargets = useMemo(() => {
@@ -136,62 +126,29 @@ export default function FoodLogPanel({ target, log, onChange }: Props) {
       : dailyKcalPct <= 110
       ? "dayProgressFill fillWarn"
       : "dayProgressFill fillBad";
-  //const [showConsumed, setShowConsumed] = useState(false);
-
-const allItems = useMemo(() => Object.values(log).flat(), [log]);
-
-const consumedByItem = useMemo(() => {
-  // tételes lista: minden étel + kiszámolt kcal
-  return allItems.map((x) => ({
-    id: x.id,
-    name: x.name,
-    grams: x.grams,
-    protein: x.protein,
-    carbs: x.carbs,
-    fat: x.fat,
-    calories: Math.round(x.protein * 4 + x.carbs * 4 + x.fat * 9),
-  }));
-}, [allItems]);
-
-const consumedMacroTotals = useMemo(() => {
-  // makrónként: miből mennyit vittél be
-  const totals = { protein: 0, carbs: 0, fat: 0, calories: 0 };
-  for (const x of consumedByItem) {
-    totals.protein += x.protein;
-    totals.carbs += x.carbs;
-    totals.fat += x.fat;
-    totals.calories += x.calories;
-  }
-  return {
-    protein: Math.round(totals.protein),
-    carbs: Math.round(totals.carbs),
-    fat: Math.round(totals.fat),
-    calories: Math.round(totals.calories),
-  };
-}, [consumedByItem]);
-
 
   // ----------- Actions -----------
   function onBarcodeDetected(code: string) {
-  setIsScannerOpen(false);
+    setIsScannerOpen(false);
 
-  const found = foodDb.find((x) => x.barcode === code) ?? null;
+    const found = foodDb.find((x) => x.barcode === code) ?? null;
 
-  if (found) {
-    setSelectedFoodId(found.id);
-    setQuery(found.name);
-    setPendingBarcode("");
-    return;
+    if (found) {
+      setSelectedFoodId(found.id);
+      setQuery(found.name);
+      setPendingBarcode("");
+      setIsAddOpen(true);
+      return;
+    }
+
+    // új termék: eltesszük a vonalkódot és nyitjuk a felvételt
+    setPendingBarcode(code);
+    setIsAddOpen(true);
+    setNewFoodName("");
+    setNewP("");
+    setNewC("");
+    setNewF("");
   }
-
-  // új termék: eltesszük a vonalkódot
-  setPendingBarcode(code);
-  setNewFoodName("");
-  setNewP("");
-  setNewC("");
-  setNewF("");
-}
-
 
   function addFood() {
     if (!selectedFood) return;
@@ -227,45 +184,48 @@ const consumedMacroTotals = useMemo(() => {
       addFoodRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 60);
   }
+
   function addNewFoodToDb() {
-  const nm = newFoodName.trim();
-  if (!nm) return;
+    const nm = newFoodName.trim();
+    if (!nm) return;
 
-  const p = clampNum(newP);
-  const c = clampNum(newC);
-  const f = clampNum(newF);
+    const p = clampNum(newP);
+    const c = clampNum(newC);
+    const f = clampNum(newF);
 
-  // egyszerű validáció: ne legyen mind 0
-  if (p <= 0 && c <= 0 && f <= 0) return;
+    if (p <= 0 && c <= 0 && f <= 0) return;
 
-  const item: FoodDbItem = {
-    id: uid(),
-    name: nm,
-    per100: { protein: p, carbs: c, fat: f },
-  };
+    const item: FoodDbItem = {
+      id: uid(),
+      name: nm,
+      per100: { protein: p, carbs: c, fat: f },
+      barcode: pendingBarcode || undefined,
+    };
 
-  // duplikáció kezelése név alapján: ha van ilyen, cseréljük
-  setFoodDb((prev) => {
-    const key = normalize(nm);
-    const filtered = prev.filter((x) => normalize(x.name) !== key);
-    return [item, ...filtered];
-  });
+    setFoodDb((prev) => {
+      const key = normalize(nm);
+      const filtered = prev.filter((x) => normalize(x.name) !== key);
+      return [item, ...filtered];
+    });
 
-  // automatikusan kiválasztjuk, hogy 1 katt és mehet gramm + Add
-  setQuery(nm);
-  setSelectedFoodId(item.id);
+    // automatikus kiválasztás
+    setQuery(nm);
+    setSelectedFoodId(item.id);
 
-  setNewFoodName("");
-  setNewP("");
-  setNewC("");
-  setNewF("");
-}
-
+    // clear form + vonalkód
+    setPendingBarcode("");
+    setNewFoodName("");
+    setNewP("");
+    setNewC("");
+    setNewF("");
+  }
 
   function removeFood(mealKey: MealKey, id: string) {
     const next = { ...log, [mealKey]: (log[mealKey] ?? []).filter((x) => x.id !== id) };
     onChange(next);
   }
+
+  const hasAnyItems = Object.keys(mealLabels).some((k) => (log[k as MealKey] ?? []).length > 0);
 
   return (
     <div>
@@ -274,18 +234,14 @@ const consumedMacroTotals = useMemo(() => {
           <h2 style={{ margin: 0 }}>Food log</h2>
           <div className="note">Select food + grams. Macros are calculated automatically.</div>
         </div>
-     <button
-  className="btnGhost"
-  type="button"
-  onClick={() => setIsScannerOpen(true)}
->
-  📷 Scan barcode
-</button>
+
+        <button className="btnGhost" type="button" onClick={() => setIsScannerOpen(true)}>
+          📷 Scan barcode
+        </button>
+
         <button className="btnPrimary" type="button" onClick={() => setIsAddOpen((v) => !v)}>
           {isAddOpen ? "Close" : "➕ Add food"}
         </button>
-   
-
       </div>
 
       {/* Daily summary */}
@@ -299,76 +255,75 @@ const consumedMacroTotals = useMemo(() => {
         </div>
 
         <div className="miniCard miniCardCollapsible">
-  <button
-    type="button"
-    className="miniCardHeaderBtn"
-    aria-expanded={openConsumed}
-    onClick={() => setOpenConsumed((v) => !v)}
-  >
-    <div>
-      <div className="miniTitle">Consumed</div>
-      <div className="miniValue">{dayTotals.calories} kcal</div>
-      <div className="muted">
-        🥩 {dayTotals.protein}g · 🍚 {dayTotals.carbs}g · 🧈 {dayTotals.fat}g
-      </div>
-    </div>
-
-    <span className="chev">{openConsumed ? "▲" : "▼"}</span>
-  </button>
-
-  <div className={`miniCollapse ${openConsumed ? "open" : ""}`}>
-    <div className="miniCollapseInner">
-      <div className="miniListTitle">Items today</div>
-
-      {Object.keys(mealLabels).every((k) => (log[k as MealKey] ?? []).length === 0) ? (
-        <div className="note">No foods yet.</div>
-      ) : (
-        <div className="consumedList">
-          {Object.keys(mealLabels).map((k) => {
-            const mk = k as MealKey;
-            const items = log[mk] ?? [];
-            if (items.length === 0) return null;
-
-            return (
-              <div key={mk} className="consumedGroup">
-                <div className="consumedGroupTitle">{mealLabels[mk]}</div>
-
-                {items.map((x) => (
-                  <div key={x.id} className="consumedRow">
-                    <div className="consumedLeft">
-                      <div className="consumedName">
-                        {x.name}
-                        {typeof x.grams === "number" ? ` (${x.grams}g)` : ""}
-                      </div>
-                      <div className="consumedMacros">
-                        🥩 {x.protein}g · 🍚 {x.carbs}g · 🧈 {x.fat}g · {Math.round(x.protein * 4 + x.carbs * 4 + x.fat * 9)} kcal
-                      </div>
-                    </div>
-
-                    <button
-                      className="iconBtn"
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        removeFood(mk, x.id);
-                      }}
-                      aria-label="Remove"
-                      title="Remove"
-                    >
-                      ×
-                    </button>
-                  </div>
-                ))}
+          <button
+            type="button"
+            className="miniCardHeaderBtn"
+            aria-expanded={openConsumed}
+            onClick={() => setOpenConsumed((v) => !v)}
+          >
+            <div>
+              <div className="miniTitle">Consumed</div>
+              <div className="miniValue">{dayTotals.calories} kcal</div>
+              <div className="muted">
+                🥩 {dayTotals.protein}g · 🍚 {dayTotals.carbs}g · 🧈 {dayTotals.fat}g
               </div>
-            );
-          })}
+            </div>
+
+            <span className="chev">{openConsumed ? "▲" : "▼"}</span>
+          </button>
+
+          <div className={`miniCollapse ${openConsumed ? "open" : ""}`}>
+            <div className="miniCollapseInner">
+              <div className="miniListTitle">Items today</div>
+
+              {!hasAnyItems ? (
+                <div className="note">No foods yet.</div>
+              ) : (
+                <div className="consumedList">
+                  {Object.keys(mealLabels).map((k) => {
+                    const mk = k as MealKey;
+                    const items = log[mk] ?? [];
+                    if (items.length === 0) return null;
+
+                    return (
+                      <div key={mk} className="consumedGroup">
+                        <div className="consumedGroupTitle">{mealLabels[mk]}</div>
+
+                        {items.map((x) => (
+                          <div key={x.id} className="consumedRow">
+                            <div className="consumedLeft">
+                              <div className="consumedName">
+                                {x.name}
+                                {typeof x.grams === "number" ? ` (${x.grams}g)` : ""}
+                              </div>
+                              <div className="consumedMacros">
+                                🥩 {x.protein}g · 🍚 {x.carbs}g · 🧈 {x.fat}g ·{" "}
+                                {Math.round(x.protein * 4 + x.carbs * 4 + x.fat * 9)} kcal
+                              </div>
+                            </div>
+
+                            <button
+                              className="iconBtn"
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                removeFood(mk, x.id);
+                              }}
+                              aria-label="Remove"
+                              title="Remove"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
-      )}
-    </div>
-  </div>
-</div>
-
-
 
         <div className="miniCard">
           <div className="miniTitle">Remaining</div>
@@ -392,7 +347,7 @@ const consumedMacroTotals = useMemo(() => {
         </div>
       </div>
 
-      {/* Add food (collapsible) */}
+      {/* Add food */}
       {isAddOpen && (
         <div ref={addFoodRef} className="panel" style={{ marginTop: 12 }}>
           <h2>Add food</h2>
@@ -420,16 +375,14 @@ const consumedMacroTotals = useMemo(() => {
 
             <label>
               Select food
-<select value={selectedFoodId} onChange={(e) => setSelectedFoodId(e.target.value)}>
-  <option value="">— choose —</option>
-  {filteredFoods.map((f) => (
-    <option key={f.id} value={f.id}>
-      {f.name}
-    </option>
-  ))}
-</select>
-
-
+              <select value={selectedFoodId} onChange={(e) => setSelectedFoodId(e.target.value)}>
+                <option value="">— choose —</option>
+                {filteredFoods.map((f) => (
+                  <option key={f.id} value={f.id}>
+                    {f.name}
+                  </option>
+                ))}
+              </select>
             </label>
 
             <label>
@@ -441,48 +394,62 @@ const consumedMacroTotals = useMemo(() => {
                 inputMode="numeric"
               />
             </label>
+
+            <div className="actionsRow" style={{ marginTop: 10 }}>
+              <button className="btnPrimary" type="button" onClick={addFood} disabled={!selectedFood}>
+                Add
+              </button>
+            </div>
+
             <div className="divider" />
 
-<h2 style={{ marginTop: 0 }}>Add new food to database (per 100g)</h2>
+            <h2 style={{ marginTop: 0 }}>
+              Add new food to database (per 100g) {pendingBarcode ? "— barcode captured ✅" : ""}
+            </h2>
 
-<div className="grid2">
-  <label>
-    Food name
-    <input
-      value={newFoodName}
-      onChange={(e) => setNewFoodName(e.target.value)}
-      placeholder="e.g. My brand protein bar"
-    />
-  </label>
+            {pendingBarcode && (
+              <div className="note" style={{ marginTop: 6 }}>
+                Barcode: <strong>{pendingBarcode}</strong> (will be saved with this food)
+              </div>
+            )}
 
-  <div />
+            <div className="grid2">
+              <label>
+                Food name
+                <input
+                  value={newFoodName}
+                  onChange={(e) => setNewFoodName(e.target.value)}
+                  placeholder="e.g. My brand protein bar"
+                />
+              </label>
 
-  <label>
-    Protein / 100g
-    <input value={newP} onChange={(e) => setNewP(e.target.value)} inputMode="numeric" />
-  </label>
+              <div />
 
-  <label>
-    Carbs / 100g
-    <input value={newC} onChange={(e) => setNewC(e.target.value)} inputMode="numeric" />
-  </label>
+              <label>
+                Protein / 100g
+                <input value={newP} onChange={(e) => setNewP(e.target.value)} inputMode="numeric" />
+              </label>
 
-  <label>
-    Fat / 100g
-    <input value={newF} onChange={(e) => setNewF(e.target.value)} inputMode="numeric" />
-  </label>
-</div>
+              <label>
+                Carbs / 100g
+                <input value={newC} onChange={(e) => setNewC(e.target.value)} inputMode="numeric" />
+              </label>
 
-<div className="actionsRow" style={{ marginTop: 10 }}>
-  <button className="btnGhost" type="button" onClick={addNewFoodToDb}>
-    Save to database
-  </button>
-</div>
+              <label>
+                Fat / 100g
+                <input value={newF} onChange={(e) => setNewF(e.target.value)} inputMode="numeric" />
+              </label>
+            </div>
 
-<div className="note" style={{ marginTop: 6 }}>
-  Tip: add per-100g values from the nutrition label. Then select grams above.
-</div>
+            <div className="actionsRow" style={{ marginTop: 10 }}>
+              <button className="btnGhost" type="button" onClick={addNewFoodToDb}>
+                Save to database
+              </button>
+            </div>
 
+            <div className="note" style={{ marginTop: 6 }}>
+              Tip: add per-100g values from the nutrition label. Then select grams above.
+            </div>
           </div>
 
           {selectedFood && grams.trim() && clampNum(grams) > 0 && (
@@ -500,15 +467,10 @@ const consumedMacroTotals = useMemo(() => {
                       🥩 {m.protein}g · 🍚 {m.carbs}g · 🧈 {m.fat}g
                     </div>
                   </>
-                );                
+                );
               })()}
-            </div>            
+            </div>
           )}
-          <div className="actionsRow" style={{ marginTop: 10 }}>
-            <button className="btnPrimary" type="button" onClick={addFood} disabled={!selectedFood}>
-              Add
-            </button>
-          </div>
         </div>
       )}
 
@@ -542,9 +504,7 @@ const consumedMacroTotals = useMemo(() => {
             onClick={() => jumpToMeal(key)}
             onKeyDown={(e) => {
               if (e.key === "Enter" || e.key === " ") jumpToMeal(key);
-              
             }}
-            
           >
             <div className="mealTop">
               <div className="mealName">{mealLabels[key]}</div>
@@ -553,7 +513,6 @@ const consumedMacroTotals = useMemo(() => {
               </div>
             </div>
 
-            {/* kcal progress */}
             <div className="progressWrap">
               <div className={barClass} style={{ width: `${kcalBar}%` }} />
             </div>
@@ -562,7 +521,6 @@ const consumedMacroTotals = useMemo(() => {
               {t.calories}/{goalForMeal.calories} kcal ({kcalPct}%)
             </div>
 
-            {/* macro mini bars */}
             <div className="miniBars">
               <div className="miniBarRow">
                 <div className="miniLabel">Protein</div>
@@ -631,11 +589,13 @@ const consumedMacroTotals = useMemo(() => {
           </div>
         );
       })}
+
+      {/* ✅ Scanner overlay */}
       <BarcodeScanner
-  isActive={isScannerOpen}
-  onDetected={onBarcodeDetected}
-  onClose={() => setIsScannerOpen(false)}
-/>
+        isActive={isScannerOpen}
+        onDetected={onBarcodeDetected}
+        onClose={() => setIsScannerOpen(false)}
+      />
     </div>
   );
 }
