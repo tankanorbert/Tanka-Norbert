@@ -15,7 +15,7 @@
 
 * { box-sizing: border-box; }
 
-body{
+html, body{
   margin:0;
   background:
     radial-gradient(1200px 600px at 20% 0%, rgba(124,58,237,.25), transparent 55%),
@@ -23,6 +23,9 @@ body{
     var(--bg);
   color: var(--text);
   font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 /* Layout */
@@ -30,6 +33,10 @@ body{
   max-width: 860px;
   margin: 0 auto;
   padding: 14px;
+   padding-left: calc(14px + env(safe-area-inset-left));
+  padding-right: calc(14px + env(safe-area-inset-right));
+  padding-top: calc(14px + env(safe-area-inset-top));
+  padding-bottom: calc(14px + env(safe-area-inset-bottom));
 }
 
 h1{
@@ -64,6 +71,8 @@ hr{
   margin: 12px 0;
   box-shadow: 0 12px 30px rgba(0,0,0,.22);
   backdrop-filter: blur(10px);
+   width: 100%;
+  max-width: 100%;
 }
 
 /* Forms */
@@ -105,6 +114,8 @@ select option{
 
 input[type="date"]{
   color-scheme: dark;
+   width: 100%;
+  max-width: 100%;
 }
 
 /* Grid helpers */
@@ -700,5 +711,10 @@ button:hover{
   position: absolute;
   inset: 0;
 }
+img, video, canvas {
+  max-width: 100%;
+  height: auto;
+}
+
 
 
