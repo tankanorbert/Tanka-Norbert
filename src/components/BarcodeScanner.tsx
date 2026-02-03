@@ -10,6 +10,16 @@ type Props = {
 export default function BarcodeScanner({ isActive, onDetected, onClose }: Props) {
   const boxRef = useRef<HTMLDivElement | null>(null);
 
+  // háttér scroll tiltás, amíg aktív
+  useEffect(() => {
+    if (!isActive) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [isActive]);
+
   useEffect(() => {
     if (!isActive) return;
 
@@ -51,7 +61,6 @@ export default function BarcodeScanner({ isActive, onDetected, onClose }: Props)
       } catch {}
 
       onDetected(String(code));
-      onClose();
     };
 
     Quagga.onDetected(handler);
@@ -63,25 +72,24 @@ export default function BarcodeScanner({ isActive, onDetected, onClose }: Props)
         Quagga.stop();
       } catch {}
     };
-  }, [isActive, onDetected, onClose]);
+  }, [isActive, onDetected]);
 
   if (!isActive) return null;
 
+  // INLINE + sticky (Food log panel tetején fog “ragadni” a CSS miatt)
   return (
-    <div className="scanOverlay" role="dialog" aria-modal="true">
-      <div className="scanCard">
-        <div className="scanTop">
-          <strong>Scan barcode</strong>
-          <button className="btnGhost" type="button" onClick={onClose}>
-            Close
-          </button>
-        </div>
+    <div className="scanInline" role="dialog" aria-modal="true">
+      <div className="scanTop">
+        <strong>Scan barcode</strong>
+        <button className="btnGhost" type="button" onClick={onClose}>
+          Close
+        </button>
+      </div>
 
-        <div className="scanBox" ref={boxRef} />
+      <div className="scanBox" ref={boxRef} />
 
-        <div className="note" style={{ marginTop: 8 }}>
-          Tartsd stabilan a kamerát a vonalkódon.
-        </div>
+      <div className="note" style={{ marginTop: 8 }}>
+        Tartsd stabilan a kamerát a vonalkódon.
       </div>
     </div>
   );

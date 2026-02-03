@@ -64,6 +64,7 @@ hr{
 
 /* Base panel */
 .panel{
+  
   background: linear-gradient(180deg, var(--panel), var(--panel2));
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -122,11 +123,10 @@ input[type="date"]{
 .grid2{
   display:grid;
   gap: 10px;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
 }
-
 @media (max-width: 720px){
-  .grid2{ grid-template-columns: 1fr; }
+  .grid2{ grid-template-columns: minmax(0, 1fr); }
 }
 
 .actionsRow{
@@ -670,42 +670,81 @@ button:hover{
   position: fixed;
   inset: 0;
   background: rgba(0,0,0,.55);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 16px;
+  backdrop-filter: blur(6px);
+  display: grid;
+  place-items: center;
+  padding: 14px;
   z-index: 9999;
 }
 
 .scanCard{
-  width: min(520px, 92vw);
+  width: min(520px, 100%);
+  background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.04));
   border: 1px solid rgba(255,255,255,.12);
   border-radius: 18px;
-  background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.05));
-  box-shadow: 0 18px 50px rgba(0,0,0,.35);
   padding: 14px;
-  backdrop-filter: blur(10px);
+  box-shadow: 0 18px 50px rgba(0,0,0,.35);
 }
 
 .scanTop{
-  display:flex;
-  align-items:center;
+  display: flex;
   justify-content: space-between;
+  align-items: center;
   gap: 12px;
 }
 
 .scanBox{
   margin-top: 12px;
-  height: 320px;
+  height: 240px;
   border-radius: 16px;
   overflow: hidden;
   border: 1px solid rgba(255,255,255,.10);
   background: rgba(255,255,255,.03);
 }
+/* ===== Barcode scanner + barcode modal (Food log tetejére lockolva) ===== */
+.scanInline{
+  position: sticky;
+  top: 10px;
+  z-index: 60;
 
-@media (max-width: 480px){
-  .scanBox{ height: 260px; }
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 16px;
+  background: rgba(10,15,25,.92);
+  backdrop-filter: blur(10px);
+  padding: 12px;
+  margin-bottom: 12px;
+
+  box-shadow: 0 16px 30px rgba(0,0,0,.35);
 }
+
+.scanInline.scanModal{
+  z-index: 70;
+  border-color: rgba(124,58,237,.35);
+}
+
+.scanTop{
+  display:flex;
+  justify-content: space-between;
+  align-items:center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.scanBox{
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.06);
+}
+
+/* mobil finomhangolás */
+@media (max-width: 640px){
+  .scanInline{ top: 8px; }
+  .scanBox{ aspect-ratio: 1 / 1; } /* telefonon szebb */
+}
+
 
 /* Quagga a video/canvas elemeket ide rakja */
 
