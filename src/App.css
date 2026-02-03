@@ -669,52 +669,46 @@ button:hover{
 .scanOverlay{
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,.65);
-  display: grid;
-  place-items: center;
+  background: rgba(0,0,0,.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: 16px;
   z-index: 9999;
 }
 
 .scanCard{
-  width: min(520px, 100%);
-  border-radius: 18px;
+  width: min(520px, 92vw);
   border: 1px solid rgba(255,255,255,.12);
-  background: rgba(15,23,42,.9);
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.05));
+  box-shadow: 0 18px 50px rgba(0,0,0,.35);
   padding: 14px;
+  backdrop-filter: blur(10px);
 }
 
 .scanTop{
-  display: flex;
+  display:flex;
+  align-items:center;
   justify-content: space-between;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 10px;
+  gap: 12px;
 }
 
 .scanBox{
-  width: 100%;
-  aspect-ratio: 3 / 4;
+  margin-top: 12px;
+  height: 320px;
   border-radius: 16px;
   overflow: hidden;
-  border: 1px solid rgba(255,255,255,.12);
-  background: rgba(255,255,255,.04);
-  position: relative;
+  border: 1px solid rgba(255,255,255,.10);
+  background: rgba(255,255,255,.03);
+}
+
+@media (max-width: 480px){
+  .scanBox{ height: 260px; }
 }
 
 /* Quagga a video/canvas elemeket ide rakja */
-.scanBox video,
-.scanBox canvas{
-  width: 100% !important;
-  height: 100% !important;
-  object-fit: cover;
-  position: absolute;
-  inset: 0;
-}
-img, video, canvas {
-  max-width: 100%;
-  height: auto;
-}
+
 
 
 

@@ -44,7 +44,7 @@ export default function BarcodeScanner({ isActive, onDetected, onClose }: Props)
       const code = res?.codeResult?.code;
       if (!code) return;
 
-      // 1 scan után stop, hogy ne duplázzon
+      // 1 scan után stop, nehogy duplázzon
       try {
         Quagga.offDetected(handler);
         Quagga.stop();

@@ -1,10 +1,5 @@
 // src/utils/foodDb.ts
-
-export type Per100 = {
-  protein: number;
-  carbs: number;
-  fat: number;
-};
+export type Per100 = { protein: number; carbs: number; fat: number };
 
 export type FoodDbItem = {
   id: string;
@@ -23,16 +18,13 @@ export function calcCalories(p: number, c: number, f: number) {
 
 export function calcFromPer100(per100: Per100, grams: number) {
   const k = grams / 100;
-
   const protein = Math.round(per100.protein * k);
   const carbs = Math.round(per100.carbs * k);
   const fat = Math.round(per100.fat * k);
-
   const calories = calcCalories(protein, carbs, fat);
   return { protein, carbs, fat, calories };
 }
 
-// helper: default ételek felvétele (barcode nélkül)
 function f(id: string, name: string, protein: number, carbs: number, fat: number): FoodDbItem {
   return { id, name, per100: { protein, carbs, fat } };
 }
@@ -82,7 +74,7 @@ export const defaultFoodDb: FoodDbItem[] = [
   f("walnuts", "Walnuts", 15, 14, 65),
   f("avocado", "Avocado", 2, 9, 15),
 
-  // --- Gym classics ---
+  // --- “Gym classics” ---
   f("skyr", "Skyr", 11, 4, 0),
   f("milk_15", "Milk 1.5%", 3, 5, 2),
   f("cheese_light", "Cheese light", 30, 2, 10),
