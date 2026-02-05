@@ -1,12 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import type { MealKey } from "../utils/meals";
-import { mealLabels, mealShares6 } from "../utils/meals";
-import type { FoodItem } from "../utils/food";
-import { totals, uid } from "../utils/food";
+import { useEffect, useMemo, useRef, useState } from "react"; import type { MealKey } from "../utils/meals"; import { mealLabels, mealShares6 } from "../utils/meals"; import type { FoodItem } from "../utils/food"; import { totals, uid } from "../utils/food";
 
-import { defaultFoodDb, calcFromPer100, normalize } from "../utils/foodDb";
-import type { FoodDbItem } from "../utils/foodDb";
-import { loadFoodDb, saveFoodDb } from "../utils/storage";
+import { defaultFoodDb, calcFromPer100, normalize } from "../utils/foodDb"; import type { FoodDbItem } from "../utils/foodDb"; import { loadFoodDb, saveFoodDb } from "../utils/storage";
 
 import BarcodeScanner from "./BarcodeScanner";
 
@@ -15,19 +9,19 @@ type MacroTarget = { proteinG: number; carbsG: number; fatG: number; calories: n
 type Props = {
   target: MacroTarget;
   log: Record<MealKey, FoodItem[]>;
-  onChange: (next: Record<MealKey, FoodItem[]>) => void;
-};
+  onChange: (next: Record<MealKey, FoodItem[]>) => void; };
 
 function clampNum(v: string) {
   const n = Number(v);
   return Number.isFinite(n) ? n : 0;
 }
+
 function clamp01to100(v: number) {
   return Math.min(100, Math.max(0, v));
 }
+
 function percent(consumed: number, target: number) {
-  return target <= 0 ? 0 : Math.round((consumed / target) * 100);
-}
+  return target <= 0 ? 0 : Math.round((consumed / target) * 100); }
 
 export default function FoodLogPanel({ target, log, onChange }: Props) {
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -40,11 +34,7 @@ export default function FoodLogPanel({ target, log, onChange }: Props) {
 
   // Scanner
   const [isScannerOpen, setIsScannerOpen] = useState(false);
-
-  // Barcode flow modal state
-  const [barcodeModalOpen, setBarcodeModalOpen] = useState(false);
-  const [scannedCode, setScannedCode] = useState<string>("");
-  const [barcodeKnownItemId, setBarcodeKnownItemId] = useState<string>(""); // ha ismert termék
+  const [pendingBarcode, setPendingBarcode] = useState<string>("");
 
   // ----------- Food DB (default + saved MERGE) -----------
   const [selectedFoodId, setSelectedFoodId] = useState<string>("");
@@ -58,18 +48,6 @@ export default function FoodLogPanel({ target, log, onChange }: Props) {
     return Array.from(map.values());
   });
 
-  // Consumed dropdown
-  const [openConsumed, setOpenConsumed] = useState(false);
-
-  // Manual add to DB (also used for barcode-new save)
-  const [newFoodName, setNewFoodName] = useState("");
-  const [newP, setNewP] = useState("");
-  const [newC, setNewC] = useState("");
-  const [newF, setNewF] = useState("");
-
-  // grams for barcode modal (separate, so it doesn't mess with Add food panel)
-  const [barcodeGrams, setBarcodeGrams] = useState("");
-
   useEffect(() => {
     saveFoodDb(foodDb);
   }, [foodDb]);
@@ -77,6 +55,7 @@ export default function FoodLogPanel({ target, log, onChange }: Props) {
   const filteredFoods = useMemo(() => {
     const q = normalize(query);
     const list = q ? foodDb.filter((x) => normalize(x.name).includes(q)) : foodDb;
+
     return list
       .slice()
       .sort((a, b) => a.name.localeCompare(b.name))
@@ -87,10 +66,14 @@ export default function FoodLogPanel({ target, log, onChange }: Props) {
     return foodDb.find((x) => x.id === selectedFoodId) ?? null;
   }, [foodDb, selectedFoodId]);
 
-  // barcode known item
-  const barcodeKnownItem = useMemo(() => {
-    return foodDb.find((x) => x.id === barcodeKnownItemId) ?? null;
-  }, [foodDb, barcodeKnownItemId]);
+  // Collapsible "Consumed" list
+  const [openConsumed, setOpenConsumed] = useState(false);
+
+  // Manual add to DB
+  const [newFoodName, setNewFoodName] = useState("");
+  const [newP, setNewP] = useState("");
+  const [newC, setNewC] = useState("");
+  const [newF, setNewF] = useState("");
 
   // ----------- Targets per meal -----------
   const perMealTargets = useMemo(() => {
@@ -132,117 +115,67 @@ export default function FoodLogPanel({ target, log, onChange }: Props) {
   const dailyKcalPct = percent(dayTotals.calories, target.calories);
   const dailyKcalBar = clamp01to100(dailyKcalPct);
   const dailyOver = dayTotals.calories - target.calories;
-  const dailyLabel = dailyOver > 0 ? `Over +${dailyOver} kcal` : `Remaining ${Math.max(0, -dailyOver)} kcal`;
+  const dailyLabel =
+    dailyOver > 0 ? `Over +${dailyOver} kcal` : `Remaining ${Math.max(0, -dailyOver)} kcal`;
 
   const dailyFillClass =
-    dailyKcalPct <= 80 ? "dayProgressFill fillOk" : dailyKcalPct <= 110 ? "dayProgressFill fillWarn" : "dayProgressFill fillBad";
+    dailyKcalPct <= 80
+      ? "dayProgressFill fillOk"
+      : dailyKcalPct <= 110
+      ? "dayProgressFill fillWarn"
+      : "dayProgressFill fillBad";
 
   // ----------- Actions -----------
-  function addFoodToMeal(item: FoodItem, mealKey: MealKey) {
-    const next = { ...log, [mealKey]: [...(log[mealKey] ?? []), item] };
-    onChange(next);
-  }
 
   function onBarcodeDetected(code: string) {
-    // leállítjuk a scannert
     setIsScannerOpen(false);
 
-    setScannedCode(code);
-
+    // ha már ismert:
     const found = foodDb.find((x) => x.barcode === code) ?? null;
 
     if (found) {
-      // ismert termék
-      setBarcodeKnownItemId(found.id);
-      setBarcodeGrams("");
-      setBarcodeModalOpen(true);
+      // 1) nyissuk ki az add food részt
+      setIsAddOpen(true);
+
+      // 2) válasszuk ki automatikusan
+      setSelectedFoodId(found.id);
+      setQuery(found.name);
+
+      // 3) kérjünk csak grammot
+      setGrams("");
+
+      // 4) nincs pending
+      setPendingBarcode("");
+
+      // 5) görgessünk az Add food részhez (kicsi késleltetés)
+      setTimeout(() => {
+        addFoodRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 80);
+
       return;
     }
 
-    // új termék
-    setBarcodeKnownItemId("");
-    setBarcodeGrams("");
+    // új termék: elmentjük a barcode-ot, és nyitjuk az add panelt, hogy fel tudd venni
+    setPendingBarcode(code);
+    setIsAddOpen(true);
+    setSelectedFoodId("");
+    setQuery("");
+    setGrams("");
+
+    // manual form reset
     setNewFoodName("");
     setNewP("");
     setNewC("");
     setNewF("");
-    setBarcodeModalOpen(true);
-  }
 
-  function closeBarcodeModal() {
-    setBarcodeModalOpen(false);
-    setScannedCode("");
-    setBarcodeKnownItemId("");
-    setBarcodeGrams("");
-  }
-
-  function addKnownBarcodeToDay() {
-    if (!barcodeKnownItem) return;
-    const g = barcodeGrams.trim() ? clampNum(barcodeGrams) : 0;
-    if (g <= 0) return;
-
-    const m = calcFromPer100(barcodeKnownItem.per100, g);
-
-    const item: FoodItem = {
-      id: uid(),
-      name: barcodeKnownItem.name,
-      grams: g,
-      protein: m.protein,
-      carbs: m.carbs,
-      fat: m.fat,
-    };
-
-    addFoodToMeal(item, meal);
-    closeBarcodeModal();
-  }
-
-  function saveNewBarcodeProductToDb(andAddToDay: boolean) {
-    const nm = newFoodName.trim();
-    if (!nm) return;
-
-    const p = clampNum(newP);
-    const c = clampNum(newC);
-    const f = clampNum(newF);
-    if (p <= 0 && c <= 0 && f <= 0) return;
-
-    const newItem: FoodDbItem = {
-      id: uid(),
-      name: nm,
-      per100: { protein: p, carbs: c, fat: f },
-      barcode: scannedCode || undefined,
-    };
-
-    setFoodDb((prev) => {
-      // név alapján duplikáció csere
-      const key = normalize(nm);
-      const filtered = prev.filter((x) => normalize(x.name) !== key);
-      return [newItem, ...filtered];
-    });
-
-    // rögtön be is rakjuk a napi kajába, ha kéred
-    if (andAddToDay) {
-      const g = barcodeGrams.trim() ? clampNum(barcodeGrams) : 0;
-      if (g > 0) {
-        const m = calcFromPer100(newItem.per100, g);
-        addFoodToMeal(
-          {
-            id: uid(),
-            name: newItem.name,
-            grams: g,
-            protein: m.protein,
-            carbs: m.carbs,
-            fat: m.fat,
-          },
-          meal
-        );
-      }
-    }
-
-    closeBarcodeModal();
+    setTimeout(() => {
+      addFoodRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 80);
   }
 
   function addFood() {
     if (!selectedFood) return;
+
     const g = grams.trim() ? clampNum(grams) : 0;
     if (g <= 0) return;
 
@@ -257,9 +190,11 @@ export default function FoodLogPanel({ target, log, onChange }: Props) {
       fat: m.fat,
     };
 
-    addFoodToMeal(item, meal);
+    const next = { ...log, [meal]: [...(log[meal] ?? []), item] };
+    onChange(next);
 
     setGrams("");
+    // query-t meghagyhatjuk, de kényelmesebb üríteni:
     setQuery("");
     setSelectedFoodId("");
   }
@@ -274,30 +209,39 @@ export default function FoodLogPanel({ target, log, onChange }: Props) {
     }, 60);
   }
 
-  function addNewFoodToDbManual() {
+  function addNewFoodToDb() {
     const nm = newFoodName.trim();
     if (!nm) return;
 
     const p = clampNum(newP);
     const c = clampNum(newC);
     const f = clampNum(newF);
+
     if (p <= 0 && c <= 0 && f <= 0) return;
 
     const item: FoodDbItem = {
       id: uid(),
       name: nm,
       per100: { protein: p, carbs: c, fat: f },
+      barcode: pendingBarcode || undefined, // ✅ barcode mentés (ha scannerből jött)
     };
 
     setFoodDb((prev) => {
+      // név duplikáció: cseréljük
       const key = normalize(nm);
       const filtered = prev.filter((x) => normalize(x.name) !== key);
       return [item, ...filtered];
     });
 
+    // automatikusan kiválasztjuk, hogy csak gramm kelljen
     setQuery(nm);
     setSelectedFoodId(item.id);
+    setGrams("");
 
+    // pending barcode törlés (már elmentve)
+    setPendingBarcode("");
+
+    // form reset
     setNewFoodName("");
     setNewP("");
     setNewC("");
@@ -312,169 +256,14 @@ export default function FoodLogPanel({ target, log, onChange }: Props) {
   const hasAnyItems = Object.keys(mealLabels).some((k) => (log[k as MealKey] ?? []).length > 0);
 
   return (
-    <div className="foodLogPanel">
-      {/* ✅ Sticky scanner panel (csak ha aktív) */}
-      <BarcodeScanner
-        isActive={isScannerOpen}
-        onDetected={onBarcodeDetected}
-        onClose={() => setIsScannerOpen(false)}
-      />
-
-      {/* ✅ Sticky barcode modal flow (ismert/új) */}
-      {barcodeModalOpen && (
-        <div className="scanInline scanModal" role="dialog" aria-modal="true">
-          <div className="scanTop">
-            <strong>Barcode: {scannedCode}</strong>
-            <button className="btnGhost" type="button" onClick={closeBarcodeModal}>
-              Close
-            </button>
-          </div>
-
-          {barcodeKnownItem ? (
-            <>
-              <div className="note" style={{ marginTop: 6 }}>
-                Felismert termék: <strong>{barcodeKnownItem.name}</strong>
-              </div>
-
-              <div className="grid2" style={{ marginTop: 10 }}>
-                <label>
-                  Meal
-                  <select value={meal} onChange={(e) => setMeal(e.target.value as MealKey)}>
-                    {Object.keys(mealLabels).map((k) => (
-                      <option key={k} value={k}>
-                        {mealLabels[k as MealKey]}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <label>
-                  Grams
-                  <input
-                    value={barcodeGrams}
-                    onChange={(e) => setBarcodeGrams(e.target.value)}
-                    placeholder="e.g. 150"
-                    inputMode="numeric"
-                  />
-                </label>
-              </div>
-
-              {barcodeGrams.trim() && clampNum(barcodeGrams) > 0 && (
-                <div className="miniCard" style={{ marginTop: 10 }}>
-                  {(() => {
-                    const g = clampNum(barcodeGrams);
-                    const m = calcFromPer100(barcodeKnownItem.per100, g);
-                    return (
-                      <>
-                        <div className="miniTitle">Preview</div>
-                        <div className="miniValue">
-                          {barcodeKnownItem.name} ({g}g) — {m.calories} kcal
-                        </div>
-                        <div className="muted">
-                          🥩 {m.protein}g · 🍚 {m.carbs}g · 🧈 {m.fat}g
-                        </div>
-                      </>
-                    );
-                  })()}
-                </div>
-              )}
-
-              <div className="actionsRow" style={{ marginTop: 10 }}>
-                <button className="btnPrimary" type="button" onClick={addKnownBarcodeToDay}>
-                  Add to day
-                </button>
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="note" style={{ marginTop: 6 }}>
-                Új termék. Add meg a tápértéket /100g, majd mentsük el.
-              </div>
-
-              <div className="grid2" style={{ marginTop: 10 }}>
-                <label>
-                  Meal (optional add)
-                  <select value={meal} onChange={(e) => setMeal(e.target.value as MealKey)}>
-                    {Object.keys(mealLabels).map((k) => (
-                      <option key={k} value={k}>
-                        {mealLabels[k as MealKey]}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <label>
-                  Grams (ha rögtön hozzáadod)
-                  <input
-                    value={barcodeGrams}
-                    onChange={(e) => setBarcodeGrams(e.target.value)}
-                    placeholder="e.g. 150"
-                    inputMode="numeric"
-                  />
-                </label>
-
-                <label>
-                  Food name
-                  <input value={newFoodName} onChange={(e) => setNewFoodName(e.target.value)} placeholder="e.g. Protein pudding" />
-                </label>
-
-                <div />
-
-                <label>
-                  Protein / 100g
-                  <input value={newP} onChange={(e) => setNewP(e.target.value)} inputMode="numeric" />
-                </label>
-
-                <label>
-                  Carbs / 100g
-                  <input value={newC} onChange={(e) => setNewC(e.target.value)} inputMode="numeric" />
-                </label>
-
-                <label>
-                  Fat / 100g
-                  <input value={newF} onChange={(e) => setNewF(e.target.value)} inputMode="numeric" />
-                </label>
-              </div>
-
-              <div className="actionsRow" style={{ marginTop: 10 }}>
-                <button className="btnGhost" type="button" onClick={() => saveNewBarcodeProductToDb(false)}>
-                  Save to DB
-                </button>
-
-                <button
-                  className="btnPrimary"
-                  type="button"
-                  onClick={() => saveNewBarcodeProductToDb(true)}
-                  disabled={!barcodeGrams.trim() || clampNum(barcodeGrams) <= 0}
-                >
-                  Save + Add to day
-                </button>
-              </div>
-
-              <div className="note" style={{ marginTop: 8 }}>
-                Tipp: a címkéről írd be a /100g értékeket. Ha egyszer elmented, legközelebb már csak grammot kér.
-              </div>
-            </>
-          )}
-        </div>
-      )}
-
-      {/* Header */}
+    <div className="foodLogPanelWrapper">
       <div className="foodHeader">
         <div>
           <h2 style={{ margin: 0 }}>Food log</h2>
           <div className="note">Select food + grams. Macros are calculated automatically.</div>
         </div>
 
-        <button
-          className="btnGhost"
-          type="button"
-          onClick={() => {
-            setIsScannerOpen(true);
-            // legyen “kéznél”
-            addFoodRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-          }}
-        >
+        <button className="btnGhost" type="button" onClick={() => setIsScannerOpen(true)}>
           📷 Scan barcode
         </button>
 
@@ -482,6 +271,13 @@ export default function FoodLogPanel({ target, log, onChange }: Props) {
           {isAddOpen ? "Close" : "➕ Add food"}
         </button>
       </div>
+
+      {/* ✅ Sticky scanner a Food log tetején */}
+      <BarcodeScanner
+        isActive={isScannerOpen}
+        onDetected={onBarcodeDetected}
+        onClose={() => setIsScannerOpen(false)}
+      />
 
       {/* Daily summary */}
       <div className="foodSummary">
@@ -507,6 +303,7 @@ export default function FoodLogPanel({ target, log, onChange }: Props) {
                 🥩 {dayTotals.protein}g · 🍚 {dayTotals.carbs}g · 🧈 {dayTotals.fat}g
               </div>
             </div>
+
             <span className="chev">{openConsumed ? "▲" : "▼"}</span>
           </button>
 
@@ -585,7 +382,7 @@ export default function FoodLogPanel({ target, log, onChange }: Props) {
         </div>
       </div>
 
-      {/* Add food panel */}
+      {/* Add food */}
       {isAddOpen && (
         <div ref={addFoodRef} className="panel" style={{ marginTop: 12 }}>
           <h2>Add food</h2>
@@ -604,7 +401,11 @@ export default function FoodLogPanel({ target, log, onChange }: Props) {
 
             <label>
               Search food
-              <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="type e.g. chicken, rice..." />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="type e.g. chicken, rice..."
+              />
             </label>
 
             <label>
@@ -621,7 +422,12 @@ export default function FoodLogPanel({ target, log, onChange }: Props) {
 
             <label>
               Grams
-              <input value={grams} onChange={(e) => setGrams(e.target.value)} placeholder="e.g. 150" inputMode="numeric" />
+              <input
+                value={grams}
+                onChange={(e) => setGrams(e.target.value)}
+                placeholder="e.g. 150"
+                inputMode="numeric"
+              />
             </label>
 
             <div className="actionsRow" style={{ marginTop: 10 }}>
@@ -632,7 +438,10 @@ export default function FoodLogPanel({ target, log, onChange }: Props) {
 
             <div className="divider" />
 
-            <h2 style={{ marginTop: 0 }}>Add new food to database (per 100g)</h2>
+            <h2 style={{ marginTop: 0 }}>
+              Add new food to database (per 100g)
+              {pendingBarcode ? " (barcode captured ✅)" : ""}
+            </h2>
 
             <div className="grid2">
               <label>
@@ -663,7 +472,7 @@ export default function FoodLogPanel({ target, log, onChange }: Props) {
             </div>
 
             <div className="actionsRow" style={{ marginTop: 10 }}>
-              <button className="btnGhost" type="button" onClick={addNewFoodToDbManual}>
+              <button className="btnGhost" type="button" onClick={addNewFoodToDb}>
                 Save to database
               </button>
             </div>
@@ -706,7 +515,11 @@ export default function FoodLogPanel({ target, log, onChange }: Props) {
         const kcalBar = clamp01to100(kcalPct);
 
         const barClass =
-          kcalPct <= 80 ? "progressBar progressOk" : kcalPct <= 110 ? "progressBar progressWarn" : "progressBar progressBad";
+          kcalPct <= 80
+            ? "progressBar progressOk"
+            : kcalPct <= 110
+            ? "progressBar progressWarn"
+            : "progressBar progressBad";
 
         const proteinPct = clamp01to100(percent(t.protein, goalForMeal.proteinG));
         const carbsPct = clamp01to100(percent(t.carbs, goalForMeal.carbsG));

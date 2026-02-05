@@ -6,6 +6,7 @@ import type { FoodDbItem } from "./foodDb";
 const DATA_KEY = "calorieData_v1";
 const FOOD_DB_KEY = "foodDb_v1";
 
+
 export function loadFoodDb(): FoodDbItem[] | null {
   try {
     const raw = localStorage.getItem(FOOD_DB_KEY);

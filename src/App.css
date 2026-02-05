@@ -744,10 +744,11 @@ button:hover{
   .scanInline{ top: 8px; }
   .scanBox{ aspect-ratio: 1 / 1; } /* telefonon szebb */
 }
+.scanInlineBox video,
+.scanInlineBox canvas { width: 100% !important; height: 100% !important; object-fit: cover; }
 
 
 /* Quagga a video/canvas elemeket ide rakja */
-
 
 
 
