@@ -68,15 +68,15 @@ export default function BarcodeScanner({ isActive, onDetected, onClose }: Props)
   if (!isActive) return null;
 
   return (
-    <div className="scanInline" role="region" aria-label="Barcode scanner">
-      <div className="scanInlineTop">
+    <div className="scanInline scanFixed" role="region" aria-label="Barcode scanner">
+      <div className="scanTop">
         <strong>Scan barcode</strong>
         <button className="btnGhost" type="button" onClick={onClose}>
           Close
         </button>
       </div>
 
-      <div className="scanInlineBox" ref={boxRef} />
+      <div className="scanBox scanInlineBox" ref={boxRef} />
 
       <div className="note" style={{ marginTop: 8 }}>
         Tartsd stabilan a kamerát a vonalkódon.

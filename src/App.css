@@ -747,6 +747,27 @@ button:hover{
 .scanInlineBox video,
 .scanInlineBox canvas { width: 100% !important; height: 100% !important; object-fit: cover; }
 
+/* ===== Fix scanner, ne essen szét scrollnál mobilon ===== */
+.scanFixed{
+  position: sticky;
+  top: calc(10px + env(safe-area-inset-top));
+  z-index: 80;
+}
+
+.scanInlineBox{
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  border-radius: 14px;
+}
+
+.scanInlineBox video,
+.scanInlineBox canvas{
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block;
+}
 
 /* Quagga a video/canvas elemeket ide rakja */
 
