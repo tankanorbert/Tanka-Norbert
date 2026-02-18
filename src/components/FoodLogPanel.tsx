@@ -35,7 +35,7 @@ function percent(consumed: number, target: number) {
   return target <= 0 ? 0 : Math.round((consumed / target) * 100);
 }
 
-export default function FoodLogPanel({ target, log, onChange, t }: Props) {
+export default function FoodLogPanel({ target, log, onChange, t, lang }: Props) {
   const [isAddOpen, setIsAddOpen] = useState(false);
 
   const [meal, setMeal] = useState<MealKey>("breakfast");
@@ -68,7 +68,7 @@ export default function FoodLogPanel({ target, log, onChange, t }: Props) {
   const [newC, setNewC] = useState("");
   const [newF, setNewF] = useState("");
 
-  // ✅ NEW: meal labels from i18n (replaces english mealLabels)
+  // ✅ meal labels from i18n
   const mealLabelsI18n = useMemo<Record<MealKey, string>>(
     () => ({
       breakfast: t.meal_breakfast,
@@ -139,6 +139,7 @@ export default function FoodLogPanel({ target, log, onChange, t }: Props) {
   const dailyKcalPct = percent(dayTotals.calories, target.calories);
   const dailyKcalBar = clamp01to100(dailyKcalPct);
   const dailyOver = dayTotals.calories - target.calories;
+
   const dailyLabel =
     dailyOver > 0 ? t.fl_over(dailyOver) : t.fl_remaining_kcal(Math.max(0, -dailyOver));
 
@@ -252,7 +253,9 @@ export default function FoodLogPanel({ target, log, onChange, t }: Props) {
     }, 60);
   }
 
-  const hasAnyItems = Object.keys(mealLabelsI18n).some((k) => (log[k as MealKey] ?? []).length > 0);
+  const hasAnyItems = (Object.keys(mealLabelsI18n) as MealKey[]).some(
+    (k) => (log[k] ?? []).length > 0
+  );
 
   return (
     <div>
@@ -307,8 +310,7 @@ export default function FoodLogPanel({ target, log, onChange, t }: Props) {
                 <div className="note">{t.fl_no_foods_yet}</div>
               ) : (
                 <div className="consumedList">
-                  {Object.keys(mealLabelsI18n).map((k) => {
-                    const mk = k as MealKey;
+                  {(Object.keys(mealLabelsI18n) as MealKey[]).map((mk) => {
                     const items = log[mk] ?? [];
                     if (items.length === 0) return null;
 
@@ -383,9 +385,9 @@ export default function FoodLogPanel({ target, log, onChange, t }: Props) {
             <label>
               {t.fl_meal}
               <select value={meal} onChange={(e) => setMeal(e.target.value as MealKey)}>
-                {Object.keys(mealLabelsI18n).map((k) => (
+                {(Object.keys(mealLabelsI18n) as MealKey[]).map((k) => (
                   <option key={k} value={k}>
-                    {mealLabelsI18n[k as MealKey]}
+                    {mealLabelsI18n[k]}
                   </option>
                 ))}
               </select>
@@ -468,9 +470,7 @@ export default function FoodLogPanel({ target, log, onChange, t }: Props) {
               </button>
             </div>
 
-            <div className="note" style={{ marginTop: 6 }}>
-              {t.fl_tip}
-            </div>
+            <div className="note" style={{ marginTop: 6 }}>{t.fl_tip}</div>
           </div>
 
           {selectedFood && grams.trim() && clampNum(grams) > 0 && (
@@ -568,8 +568,7 @@ export default function FoodLogPanel({ target, log, onChange, t }: Props) {
             </div>
 
             <div className="mealMeta" style={{ marginTop: 8 }}>
-              {t.fl_meal_target_line}: 🥩 {goalForMeal.proteinG}g · 🍚 {goalForMeal.carbsG}g · 🧈{" "}
-              {goalForMeal.fatG}g
+              {t.fl_meal_target_line}: 🥩 {goalForMeal.proteinG}g · 🍚 {goalForMeal.carbsG}g · 🧈 {goalForMeal.fatG}g
               <br />
               {t.fl_meal_consumed_line}: 🥩 {tt.protein}g · 🍚 {tt.carbs}g · 🧈 {tt.fat}g
             </div>

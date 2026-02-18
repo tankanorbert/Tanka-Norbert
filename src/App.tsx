@@ -424,7 +424,7 @@ function App() {
         <div className={`collapse ${showFoodLog ? "open" : ""}`} style={{ maxHeight: foodCollapse.maxHeightPx }}>
           <div ref={foodCollapse.innerRef} className="collapseInner">
             {foodTarget ? (
-              <FoodLogPanel target={foodTarget} log={foodLog} onChange={(next) => setFoodLog(next)} lang={lang} t={t} />
+              <FoodLogPanel target={foodTarget} log={foodLog} onChange={(next) => setFoodLog(next as any)} lang={lang} t={t} />
             ) : (
               <p className="muted">{t.press_calculate_to_see}</p>
             )}
