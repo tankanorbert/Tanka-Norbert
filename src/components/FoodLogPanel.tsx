@@ -1,6 +1,7 @@
+// src/components/FoodLogPanel.tsx
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { MealKey } from "../utils/meals";
-import { mealLabels, mealShares6 } from "../utils/meals";
+import { mealShares6 } from "../utils/meals";
 import type { FoodItem } from "../utils/food";
 import { totals, uid } from "../utils/food";
 
@@ -9,6 +10,7 @@ import type { FoodDbItem } from "../utils/foodDb";
 import { loadFoodDb, saveFoodDb } from "../utils/storage";
 
 import BarcodeScanner from "./BarcodeScanner";
+import type { Lang, TDic } from "../utils/i18n";
 
 type MacroTarget = { proteinG: number; carbsG: number; fatG: number; calories: number };
 
@@ -16,6 +18,8 @@ type Props = {
   target: MacroTarget;
   log: Record<MealKey, FoodItem[]>;
   onChange: (next: Record<MealKey, FoodItem[]>) => void;
+  lang: Lang;
+  t: TDic;
 };
 
 function clampNum(v: string) {
@@ -31,22 +35,20 @@ function percent(consumed: number, target: number) {
   return target <= 0 ? 0 : Math.round((consumed / target) * 100);
 }
 
-export default function FoodLogPanel({ target, log, onChange }: Props) {
+export default function FoodLogPanel({ target, log, onChange, t }: Props) {
   const [isAddOpen, setIsAddOpen] = useState(false);
 
   const [meal, setMeal] = useState<MealKey>("breakfast");
   const [grams, setGrams] = useState("");
 
   const addFoodRef = useRef<HTMLDivElement | null>(null);
-  const gramsRef = useRef<HTMLInputElement | null>(null);
-
   const [activeMeal, setActiveMeal] = useState<MealKey | null>(null);
 
   // Scanner
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [pendingBarcode, setPendingBarcode] = useState<string>("");
 
-  // Food DB (default + saved MERGE)
+  // Food DB
   const [selectedFoodId, setSelectedFoodId] = useState<string>("");
   const [query, setQuery] = useState("");
 
@@ -66,6 +68,19 @@ export default function FoodLogPanel({ target, log, onChange }: Props) {
   const [newC, setNewC] = useState("");
   const [newF, setNewF] = useState("");
 
+  // ✅ NEW: meal labels from i18n (replaces english mealLabels)
+  const mealLabelsI18n = useMemo<Record<MealKey, string>>(
+    () => ({
+      breakfast: t.meal_breakfast,
+      snack1: t.meal_snack1,
+      lunch: t.meal_lunch,
+      snack2: t.meal_snack2,
+      dinner: t.meal_dinner,
+      supper: t.meal_supper,
+    }),
+    [t]
+  );
+
   useEffect(() => {
     saveFoodDb(foodDb);
   }, [foodDb]);
@@ -73,6 +88,7 @@ export default function FoodLogPanel({ target, log, onChange }: Props) {
   const filteredFoods = useMemo(() => {
     const q = normalize(query);
     const list = q ? foodDb.filter((x) => normalize(x.name).includes(q)) : foodDb;
+
     return list
       .slice()
       .sort((a, b) => a.name.localeCompare(b.name))
@@ -105,7 +121,10 @@ export default function FoodLogPanel({ target, log, onChange }: Props) {
     return map;
   }, [target]);
 
-  const dayTotals = useMemo(() => totals(Object.values(log).flat()), [log]);
+  const dayTotals = useMemo(() => {
+    const all = Object.values(log).flat();
+    return totals(all);
+  }, [log]);
 
   const remaining = useMemo(() => {
     return {
@@ -120,41 +139,20 @@ export default function FoodLogPanel({ target, log, onChange }: Props) {
   const dailyKcalPct = percent(dayTotals.calories, target.calories);
   const dailyKcalBar = clamp01to100(dailyKcalPct);
   const dailyOver = dayTotals.calories - target.calories;
-  const dailyLabel = dailyOver > 0 ? `Over +${dailyOver} kcal` : `Remaining ${Math.max(0, -dailyOver)} kcal`;
+  const dailyLabel =
+    dailyOver > 0 ? t.fl_over(dailyOver) : t.fl_remaining_kcal(Math.max(0, -dailyOver));
 
   const dailyFillClass =
-    dailyKcalPct <= 80 ? "dayProgressFill fillOk" : dailyKcalPct <= 110 ? "dayProgressFill fillWarn" : "dayProgressFill fillBad";
+    dailyKcalPct <= 80
+      ? "dayProgressFill fillOk"
+      : dailyKcalPct <= 110
+      ? "dayProgressFill fillWarn"
+      : "dayProgressFill fillBad";
 
-  const hasAnyItems = Object.keys(mealLabels).some((k) => (log[k as MealKey] ?? []).length > 0);
-
-  // ---------------- BARCODE FLOW ----------------
-  async function onBarcodeDetected(code: string) {
-    setIsScannerOpen(false);
-
-    // 1) saját adatbázisban van?
-    const found = foodDb.find((x) => x.barcode === code) ?? null;
-    if (found) {
-      setSelectedFoodId(found.id);
-      setQuery(found.name);
-      setPendingBarcode("");
-
-      setIsAddOpen(true);
-      setTimeout(() => gramsRef.current?.focus(), 80);
-      return;
-    }
-
-    // 2) NINCS -> ide jön majd a TE lookup-od (pl. OpenFoodFacts)
-    // const hit = await lookupBarcode(code)
-    // if (hit) { setNewFoodName(hit.name); setNewP(...); setNewC(...); setNewF(...); }
-
-    // 3) fallback: kézi mentés
-    setPendingBarcode(code);
+  function jumpToMeal(m: MealKey) {
+    setActiveMeal(m);
+    setMeal(m);
     setIsAddOpen(true);
-
-    setNewFoodName("");
-    setNewP("");
-    setNewC("");
-    setNewF("");
 
     setTimeout(() => {
       addFoodRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -186,23 +184,19 @@ export default function FoodLogPanel({ target, log, onChange }: Props) {
     setSelectedFoodId("");
   }
 
-  function jumpToMeal(m: MealKey) {
-    setActiveMeal(m);
-    setMeal(m);
-    setIsAddOpen(true);
-
-    setTimeout(() => {
-      addFoodRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 60);
+  function removeFood(mealKey: MealKey, id: string) {
+    const next = { ...log, [mealKey]: (log[mealKey] ?? []).filter((x) => x.id !== id) };
+    onChange(next);
   }
 
-  function addNewFoodToDbAndSelect(options?: { autoFocusGrams?: boolean }) {
+  function addNewFoodToDb() {
     const nm = newFoodName.trim();
     if (!nm) return;
 
     const p = clampNum(newP);
     const c = clampNum(newC);
     const f = clampNum(newF);
+
     if (p <= 0 && c <= 0 && f <= 0) return;
 
     const item: FoodDbItem = {
@@ -218,56 +212,69 @@ export default function FoodLogPanel({ target, log, onChange }: Props) {
       return [item, ...filtered];
     });
 
-    // kiválasztjuk, hogy csak gramm kelljen
     setQuery(nm);
     setSelectedFoodId(item.id);
 
-    // takarítás
     setPendingBarcode("");
     setNewFoodName("");
     setNewP("");
     setNewC("");
     setNewF("");
+  }
 
-    // opcionális: gram fókusz
-    if (options?.autoFocusGrams) {
-      setTimeout(() => gramsRef.current?.focus(), 80);
+  function onBarcodeDetected(code: string) {
+    setIsScannerOpen(false);
+
+    const found = foodDb.find((x) => x.barcode === code) ?? null;
+
+    if (found) {
+      setSelectedFoodId(found.id);
+      setQuery(found.name);
+      setPendingBarcode("");
+      setIsAddOpen(true);
+
+      setTimeout(() => {
+        addFoodRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 60);
+
+      return;
     }
+
+    setPendingBarcode(code);
+    setIsAddOpen(true);
+    setNewFoodName("");
+    setNewP("");
+    setNewC("");
+    setNewF("");
+
+    setTimeout(() => {
+      addFoodRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 60);
   }
 
-  function removeFood(mealKey: MealKey, id: string) {
-    const next = { ...log, [mealKey]: (log[mealKey] ?? []).filter((x) => x.id !== id) };
-    onChange(next);
-  }
+  const hasAnyItems = Object.keys(mealLabelsI18n).some((k) => (log[k as MealKey] ?? []).length > 0);
 
   return (
     <div>
       <div className="foodHeader">
         <div>
-          <h2 style={{ margin: 0 }}>Food log</h2>
-          <div className="note">Select food + grams. Macros are calculated automatically.</div>
+          <h2 style={{ margin: 0 }}>{t.foodlog_title}</h2>
+          <div className="note">{t.fl_note}</div>
         </div>
 
-        <button className="btnGhost" type="button" onClick={() => setIsScannerOpen((v) => !v)}>
-          📷 Scan barcode
+        <button className="btnGhost" type="button" onClick={() => setIsScannerOpen(true)}>
+          {t.fl_scan_barcode}
         </button>
 
         <button className="btnPrimary" type="button" onClick={() => setIsAddOpen((v) => !v)}>
-          {isAddOpen ? "Close" : "➕ Add food"}
+          {isAddOpen ? t.fl_add_food_toggle_close : t.fl_add_food_toggle_open}
         </button>
       </div>
-
-      {/* FIXED scanner – Food log tetején */}
-      <BarcodeScanner
-        isActive={isScannerOpen}
-        onDetected={onBarcodeDetected}
-        onClose={() => setIsScannerOpen(false)}
-      />
 
       {/* Daily summary */}
       <div className="foodSummary">
         <div className="miniCard">
-          <div className="miniTitle">Target</div>
+          <div className="miniTitle">{t.fl_target}</div>
           <div className="miniValue">{target.calories} kcal</div>
           <div className="muted">
             🥩 {target.proteinG}g · 🍚 {target.carbsG}g · 🧈 {target.fatG}g
@@ -282,7 +289,7 @@ export default function FoodLogPanel({ target, log, onChange }: Props) {
             onClick={() => setOpenConsumed((v) => !v)}
           >
             <div>
-              <div className="miniTitle">Consumed</div>
+              <div className="miniTitle">{t.fl_consumed}</div>
               <div className="miniValue">{dayTotals.calories} kcal</div>
               <div className="muted">
                 🥩 {dayTotals.protein}g · 🍚 {dayTotals.carbs}g · 🧈 {dayTotals.fat}g
@@ -294,20 +301,20 @@ export default function FoodLogPanel({ target, log, onChange }: Props) {
 
           <div className={`miniCollapse ${openConsumed ? "open" : ""}`}>
             <div className="miniCollapseInner">
-              <div className="miniListTitle">Items today</div>
+              <div className="miniListTitle">{t.fl_items_today}</div>
 
               {!hasAnyItems ? (
-                <div className="note">No foods yet.</div>
+                <div className="note">{t.fl_no_foods_yet}</div>
               ) : (
                 <div className="consumedList">
-                  {Object.keys(mealLabels).map((k) => {
+                  {Object.keys(mealLabelsI18n).map((k) => {
                     const mk = k as MealKey;
                     const items = log[mk] ?? [];
                     if (items.length === 0) return null;
 
                     return (
                       <div key={mk} className="consumedGroup">
-                        <div className="consumedGroupTitle">{mealLabels[mk]}</div>
+                        <div className="consumedGroupTitle">{mealLabelsI18n[mk]}</div>
 
                         {items.map((x) => (
                           <div key={x.id} className="consumedRow">
@@ -329,8 +336,8 @@ export default function FoodLogPanel({ target, log, onChange }: Props) {
                                 e.stopPropagation();
                                 removeFood(mk, x.id);
                               }}
-                              aria-label="Remove"
-                              title="Remove"
+                              aria-label={t.fl_remove}
+                              title={t.fl_remove}
                             >
                               ×
                             </button>
@@ -346,7 +353,7 @@ export default function FoodLogPanel({ target, log, onChange }: Props) {
         </div>
 
         <div className="miniCard">
-          <div className="miniTitle">Remaining</div>
+          <div className="miniTitle">{t.fl_remaining}</div>
           <div className="miniValue">{remaining.calories} kcal</div>
           <div className="muted" style={{ marginTop: 8 }}>
             🥩 {remaining.proteinG}g · 🍚 {remaining.carbsG}g · 🧈 {remaining.fatG}g
@@ -370,29 +377,33 @@ export default function FoodLogPanel({ target, log, onChange }: Props) {
       {/* Add food */}
       {isAddOpen && (
         <div ref={addFoodRef} className="panel" style={{ marginTop: 12 }}>
-          <h2>Add food</h2>
+          <h2>{t.fl_add_food_title}</h2>
 
           <div className="grid2">
             <label>
-              Meal
+              {t.fl_meal}
               <select value={meal} onChange={(e) => setMeal(e.target.value as MealKey)}>
-                {Object.keys(mealLabels).map((k) => (
+                {Object.keys(mealLabelsI18n).map((k) => (
                   <option key={k} value={k}>
-                    {mealLabels[k as MealKey]}
+                    {mealLabelsI18n[k as MealKey]}
                   </option>
                 ))}
               </select>
             </label>
 
             <label>
-              Search food
-              <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="type e.g. chicken, rice..." />
+              {t.fl_search_food}
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder={t.fl_search_placeholder}
+              />
             </label>
 
             <label>
-              Select food
+              {t.fl_select_food}
               <select value={selectedFoodId} onChange={(e) => setSelectedFoodId(e.target.value)}>
-                <option value="">— choose —</option>
+                <option value="">{t.fl_choose}</option>
                 {filteredFoods.map((f) => (
                   <option key={f.id} value={f.id}>
                     {f.name}
@@ -402,71 +413,63 @@ export default function FoodLogPanel({ target, log, onChange }: Props) {
             </label>
 
             <label>
-              Grams
+              {t.fl_grams}
               <input
-                ref={gramsRef}
                 value={grams}
                 onChange={(e) => setGrams(e.target.value)}
-                placeholder="e.g. 150"
+                placeholder={t.fl_grams_placeholder}
                 inputMode="numeric"
               />
             </label>
 
             <div className="actionsRow" style={{ marginTop: 10 }}>
               <button className="btnPrimary" type="button" onClick={addFood} disabled={!selectedFood}>
-                Add
+                {t.fl_add}
               </button>
             </div>
 
             <div className="divider" />
 
             <h2 style={{ marginTop: 0 }}>
-              Add new food to database (per 100g)
-              {pendingBarcode ? " (barcode captured ✅)" : ""}
+              {t.fl_add_new_food_title} {pendingBarcode ? ` ${t.fl_barcode_captured}` : ""}
             </h2>
 
             <div className="grid2">
               <label>
-                Food name
-                <input value={newFoodName} onChange={(e) => setNewFoodName(e.target.value)} placeholder="e.g. My brand protein bar" />
+                {t.fl_food_name}
+                <input
+                  value={newFoodName}
+                  onChange={(e) => setNewFoodName(e.target.value)}
+                  placeholder={t.fl_food_name_placeholder}
+                />
               </label>
 
               <div />
 
               <label>
-                Protein / 100g
+                {t.fl_protein_100}
                 <input value={newP} onChange={(e) => setNewP(e.target.value)} inputMode="numeric" />
               </label>
 
               <label>
-                Carbs / 100g
+                {t.fl_carbs_100}
                 <input value={newC} onChange={(e) => setNewC(e.target.value)} inputMode="numeric" />
               </label>
 
               <label>
-                Fat / 100g
+                {t.fl_fat_100}
                 <input value={newF} onChange={(e) => setNewF(e.target.value)} inputMode="numeric" />
               </label>
             </div>
 
             <div className="actionsRow" style={{ marginTop: 10 }}>
-              <button className="btnGhost" type="button" onClick={() => addNewFoodToDbAndSelect({ autoFocusGrams: true })}>
-                Save to database
-              </button>
-
-              <button
-                className="btnPrimary"
-                type="button"
-                onClick={() => {
-                  addNewFoodToDbAndSelect({ autoFocusGrams: true });
-                }}
-              >
-                Save + prepare grams
+              <button className="btnGhost" type="button" onClick={addNewFoodToDb}>
+                {t.fl_save_to_db}
               </button>
             </div>
 
             <div className="note" style={{ marginTop: 6 }}>
-              Tip: add per-100g values from the nutrition label. Then select grams above.
+              {t.fl_tip}
             </div>
           </div>
 
@@ -477,7 +480,7 @@ export default function FoodLogPanel({ target, log, onChange }: Props) {
                 const m = calcFromPer100(selectedFood.per100, g);
                 return (
                   <>
-                    <div className="miniTitle">Preview</div>
+                    <div className="miniTitle">{t.fl_preview}</div>
                     <div className="miniValue">
                       {selectedFood.name} ({g}g) — {m.calories} kcal
                     </div>
@@ -493,20 +496,24 @@ export default function FoodLogPanel({ target, log, onChange }: Props) {
       )}
 
       {/* Meals */}
-      {Object.keys(mealLabels).map((k) => {
-        const key = k as MealKey;
+      {(Object.keys(mealLabelsI18n) as MealKey[]).map((key) => {
         const items = log[key] ?? [];
-        const t = totals(items);
+        const tt = totals(items);
         const goalForMeal = perMealTargets[key];
 
-        const kcalPct = percent(t.calories, goalForMeal.calories);
+        const kcalPct = percent(tt.calories, goalForMeal.calories);
         const kcalBar = clamp01to100(kcalPct);
 
-        const barClass = kcalPct <= 80 ? "progressBar progressOk" : kcalPct <= 110 ? "progressBar progressWarn" : "progressBar progressBad";
+        const barClass =
+          kcalPct <= 80
+            ? "progressBar progressOk"
+            : kcalPct <= 110
+            ? "progressBar progressWarn"
+            : "progressBar progressBad";
 
-        const proteinPct = clamp01to100(percent(t.protein, goalForMeal.proteinG));
-        const carbsPct = clamp01to100(percent(t.carbs, goalForMeal.carbsG));
-        const fatPct = clamp01to100(percent(t.fat, goalForMeal.fatG));
+        const proteinPct = clamp01to100(percent(tt.protein, goalForMeal.proteinG));
+        const carbsPct = clamp01to100(percent(tt.carbs, goalForMeal.carbsG));
+        const fatPct = clamp01to100(percent(tt.fat, goalForMeal.fatG));
 
         return (
           <div
@@ -520,9 +527,9 @@ export default function FoodLogPanel({ target, log, onChange }: Props) {
             }}
           >
             <div className="mealTop">
-              <div className="mealName">{mealLabels[key]}</div>
+              <div className="mealName">{mealLabelsI18n[key]}</div>
               <div className="mealMeta">
-                Target {goalForMeal.calories} kcal · Consumed {t.calories} kcal
+                {t.fl_target_kcal} {goalForMeal.calories} kcal · {t.fl_consumed_kcal} {tt.calories} kcal
               </div>
             </div>
 
@@ -531,12 +538,12 @@ export default function FoodLogPanel({ target, log, onChange }: Props) {
             </div>
 
             <div className="note" style={{ marginTop: 6 }}>
-              {t.calories}/{goalForMeal.calories} kcal ({kcalPct}%)
+              {tt.calories}/{goalForMeal.calories} kcal ({kcalPct}%)
             </div>
 
             <div className="miniBars">
               <div className="miniBarRow">
-                <div className="miniLabel">Protein</div>
+                <div className="miniLabel">{t.fl_protein}</div>
                 <div className="miniWrap">
                   <div className="miniFill fillProtein" style={{ width: `${proteinPct}%` }} />
                 </div>
@@ -544,7 +551,7 @@ export default function FoodLogPanel({ target, log, onChange }: Props) {
               </div>
 
               <div className="miniBarRow">
-                <div className="miniLabel">Carbs</div>
+                <div className="miniLabel">{t.fl_carbs}</div>
                 <div className="miniWrap">
                   <div className="miniFill fillCarbs" style={{ width: `${carbsPct}%` }} />
                 </div>
@@ -552,7 +559,7 @@ export default function FoodLogPanel({ target, log, onChange }: Props) {
               </div>
 
               <div className="miniBarRow">
-                <div className="miniLabel">Fat</div>
+                <div className="miniLabel">{t.fl_fat}</div>
                 <div className="miniWrap">
                   <div className="miniFill fillFat" style={{ width: `${fatPct}%` }} />
                 </div>
@@ -561,14 +568,15 @@ export default function FoodLogPanel({ target, log, onChange }: Props) {
             </div>
 
             <div className="mealMeta" style={{ marginTop: 8 }}>
-              Target: 🥩 {goalForMeal.proteinG}g · 🍚 {goalForMeal.carbsG}g · 🧈 {goalForMeal.fatG}g
+              {t.fl_meal_target_line}: 🥩 {goalForMeal.proteinG}g · 🍚 {goalForMeal.carbsG}g · 🧈{" "}
+              {goalForMeal.fatG}g
               <br />
-              Consumed: 🥩 {t.protein}g · 🍚 {t.carbs}g · 🧈 {t.fat}g
+              {t.fl_meal_consumed_line}: 🥩 {tt.protein}g · 🍚 {tt.carbs}g · 🧈 {tt.fat}g
             </div>
 
             {items.length === 0 ? (
               <div className="note" style={{ marginTop: 10 }}>
-                No foods yet.
+                {t.fl_no_foods_yet}
               </div>
             ) : (
               <ul className="foodList">
@@ -591,7 +599,8 @@ export default function FoodLogPanel({ target, log, onChange }: Props) {
                         e.stopPropagation();
                         removeFood(key, x.id);
                       }}
-                      aria-label="Remove"
+                      aria-label={t.fl_remove}
+                      title={t.fl_remove}
                     >
                       ×
                     </button>
@@ -602,6 +611,12 @@ export default function FoodLogPanel({ target, log, onChange }: Props) {
           </div>
         );
       })}
+
+      <BarcodeScanner
+        isActive={isScannerOpen}
+        onDetected={onBarcodeDetected}
+        onClose={() => setIsScannerOpen(false)}
+      />
     </div>
   );
 }

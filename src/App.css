@@ -9,7 +9,6 @@
   --good: #22c55e;
   --warn: #f59e0b;
   --bad: #ef4444;
-
   --radius: 18px;
 }
 
@@ -33,10 +32,20 @@ html, body{
   max-width: 860px;
   margin: 0 auto;
   padding: 14px;
-   padding-left: calc(14px + env(safe-area-inset-left));
+  padding-left: calc(14px + env(safe-area-inset-left));
   padding-right: calc(14px + env(safe-area-inset-right));
   padding-top: calc(14px + env(safe-area-inset-top));
-  padding-bottom: calc(14px + env(safe-area-inset-bottom));
+  padding-bottom: calc(14px + env(safe-area-inset-bottom)); }
+
+@media (max-width: 720px){
+  .container{ padding: 12px; }
+}
+
+.langRow{
+  display:flex;
+  justify-content:flex-end;
+  gap:8px;
+  margin-bottom: 10px;
 }
 
 h1{
@@ -57,14 +66,8 @@ hr{
   margin: 12px 0;
 }
 
-@media (max-width: 720px){
-  .container{ padding: 12px; }
-  h1{ font-size: 20px; }
-}
-
 /* Base panel */
 .panel{
-  
   background: linear-gradient(180deg, var(--panel), var(--panel2));
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -72,7 +75,7 @@ hr{
   margin: 12px 0;
   box-shadow: 0 12px 30px rgba(0,0,0,.22);
   backdrop-filter: blur(10px);
-   width: 100%;
+  width: 100%;
   max-width: 100%;
 }
 
@@ -93,15 +96,13 @@ input, select{
   background: rgba(255,255,255,.06);
   color: var(--text);
   outline: none;
-  font-size: 16px; /* iOS zoom fix */
+  font-size: 16px;
 }
 
 input:focus, select:focus{
   border-color: rgba(124,58,237,.65);
-  box-shadow: 0 0 0 4px rgba(124,58,237,.18);
-}
+  box-shadow: 0 0 0 4px rgba(124,58,237,.18); }
 
-/* Dark select dropdown */
 select{
   -webkit-appearance: none;
   -moz-appearance: none;
@@ -115,7 +116,7 @@ select option{
 
 input[type="date"]{
   color-scheme: dark;
-   width: 100%;
+  width: 100%;
   max-width: 100%;
 }
 
@@ -123,11 +124,8 @@ input[type="date"]{
 .grid2{
   display:grid;
   gap: 10px;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-}
-@media (max-width: 720px){
-  .grid2{ grid-template-columns: minmax(0, 1fr); }
-}
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } @media (max-width: 720px){
+  .grid2{ grid-template-columns: minmax(0, 1fr); } }
 
 .actionsRow{
   display:flex;
@@ -143,15 +141,7 @@ input[type="date"]{
   margin-top: 8px;
 }
 
-.muted{
-  color: var(--muted);
-  font-size: 13px;
-}
-
-.note{
-  color: var(--muted);
-  font-size: 12px;
-}
+.muted{ color: var(--muted); font-size: 13px; } .note{ color: var(--muted); font-size: 12px; }
 
 /* Buttons */
 button{
@@ -163,30 +153,24 @@ button{
   cursor: pointer;
   font-weight: 600;
 }
-
-button:hover{
-  border-color: rgba(124,58,237,.55);
-}
+button:hover{ border-color: rgba(124,58,237,.55); }
 
 .btnPrimary{
   background: linear-gradient(135deg, rgba(124,58,237,.95), rgba(124,58,237,.65));
   border-color: rgba(124,58,237,.55);
 }
-
 .btnPrimary:hover{ filter: brightness(1.06); }
 
 .btnGhost{
   background: rgba(255,255,255,.06);
   border: 1px solid var(--border);
 }
-
 .btnGhost:hover{ border-color: rgba(124,58,237,.55); }
 
 .btnDanger{
   background: linear-gradient(135deg, rgba(239,68,68,.95), rgba(239,68,68,.55));
   border-color: rgba(239,68,68,.55);
 }
-
 .btnDanger:hover{ filter: brightness(1.06); }
 
 /* Chips */
@@ -197,73 +181,54 @@ button:hover{
   background: rgba(255,255,255,.06);
   font-weight: 700;
 }
-
 .chip:hover{ border-color: rgba(124,58,237,.55); }
 
 .chipActive{
   border-color: rgba(124,58,237,.75);
-  box-shadow: 0 0 0 4px rgba(124,58,237,.14);
-}
+  box-shadow: 0 0 0 4px rgba(124,58,237,.14); }
 
-/* ================= COLLAPSIBLE PANELS ================= */
-/* header */
+/* Collapsible panels */
 .panelHeader{
   width: 100%;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-
   padding: 6px 0;
   background: transparent;
   border: none;
   border-radius: 0;
-
   cursor: pointer;
   color: inherit;
   text-align: left;
 }
 
-.panelHeader h2{
-  margin: 0;
-  font-size: 18px;
-}
+.panelHeader h2{ margin: 0; font-size: 18px; }
 
 .chevron{
   opacity: .75;
   font-size: 14px;
-  transition: transform .15s ease, opacity .15s ease;
-}
-
-.panelHeader[aria-expanded="true"] .chevron{
+  transition: transform .15s ease, opacity .15s ease; } .panelHeader[aria-expanded="true"] .chevron{
   transform: rotate(180deg);
   opacity: 1;
 }
 
-/* body (IMPORTANT: closed state has ZERO padding/border) */
 .collapse{
   overflow: hidden;
   max-height: 0;
   opacity: 0;
   transform: translateY(-4px);
   transition: max-height 260ms ease, opacity 200ms ease, transform 200ms ease;
-  will-change: max-height, opacity, transform;
-}
-
-/* we do NOT set max-height here, JS sets it inline */
-.collapse.open{
+  will-change: max-height, opacity, transform; } .collapse.open{
   opacity: 1;
   transform: translateY(0);
 }
-
-/* inner only when open: avoid “empty box” when closed */
 .collapseInner{
   padding-top: 12px;
   border-top: 1px solid rgba(255,255,255,.10);
   margin-top: 12px;
   padding-bottom: 14px;
 }
-/* ====================================================== */
 
 /* Calories KPI cards */
 .kpi{
@@ -272,7 +237,6 @@ button:hover{
   grid-template-columns: 1fr 1fr 1fr;
   margin-top: 10px;
 }
-
 @media (max-width: 720px){
   .kpi{ grid-template-columns: 1fr; }
 }
@@ -283,27 +247,22 @@ button:hover{
   padding: 12px;
   background: rgba(255,255,255,.05);
 }
+.kpiTitle{ color: var(--muted); font-size: 12px; } .kpiValue{ font-size: 18px; font-weight: 800; margin-top: 4px; }
 
-.kpiTitle{ color: var(--muted); font-size: 12px; }
-.kpiValue{ font-size: 18px; font-weight: 800; margin-top: 4px; }
-
-/* Day panel layout */
+/* Day panel */
 .dayPanel{ display: grid; gap: 14px; }
-
 .dayTopRow{
   display: grid;
   grid-template-columns: 1fr 260px;
   gap: 14px;
   align-items: end;
 }
-
 .dayQuick{
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
   align-items: center;
 }
-
 .dayDate{ width: 100%; }
 
 .daySecondRow{
@@ -313,40 +272,23 @@ button:hover{
   gap: 12px;
   flex-wrap: wrap;
 }
-
 .dayActions{
   display: flex;
   gap: 10px;
   justify-content: flex-end;
   flex-wrap: wrap;
 }
-
 .savedBox{
   margin-top: 8px;
   padding-top: 10px;
-  border-top: 1px solid rgba(255,255,255,.10);
-}
-
-/* Mobile day layout */
-@media (max-width: 640px) {
+  border-top: 1px solid rgba(255,255,255,.10); } @media (max-width: 640px) {
   .dayTopRow{ grid-template-columns: 1fr; }
-
-  .daySecondRow{
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .dayActions{
-    display: grid;
-    gap: 10px;
-  }
-
-  .dayActions button{
-    width: 100%;
-  }
+  .daySecondRow{ flex-direction: column; align-items: stretch; }
+  .dayActions{ display: grid; gap: 10px; }
+  .dayActions button{ width: 100%; }
 }
 
-/* ================= FOOD LOG ================= */
+/* Food log */
 .foodHeader{
   display:flex;
   justify-content: space-between;
@@ -361,10 +303,8 @@ button:hover{
   grid-template-columns: 1fr 1fr 1fr;
   margin-top: 10px;
 }
-
 @media (max-width: 720px){
-  .foodSummary{ grid-template-columns: 1fr; }
-}
+  .foodSummary{ grid-template-columns: 1fr; } }
 
 .miniCard{
   border: 1px solid var(--border);
@@ -372,9 +312,7 @@ button:hover{
   padding: 12px;
   background: rgba(255,255,255,.05);
 }
-
-.miniTitle{ color: var(--muted); font-size: 12px; }
-.miniValue{ font-size: 16px; font-weight: 800; margin-top: 4px; }
+.miniTitle{ color: var(--muted); font-size: 12px; } .miniValue{ font-size: 16px; font-weight: 800; margin-top: 4px; }
 
 .mealCard{
   border: 1px solid var(--border);
@@ -385,8 +323,6 @@ button:hover{
   cursor: pointer;
   position: relative;
 }
-
-/* highlight ring only when active/focus */
 .mealCard.isActive::before,
 .mealCard:focus-visible::before{
   content: "";
@@ -396,17 +332,13 @@ button:hover{
   pointer-events: none;
   box-shadow:
     inset 0 0 0 2px rgba(124,58,237,.85),
-    inset 0 0 0 1px rgba(255,255,255,.08);
-}
-
-.mealCard:hover::before{
+    inset 0 0 0 1px rgba(255,255,255,.08); } .mealCard:hover::before{
   content: "";
   position: absolute;
   inset: 0;
   border-radius: inherit;
   pointer-events: none;
-  box-shadow: inset 0 0 0 1px rgba(124,58,237,.35);
-}
+  box-shadow: inset 0 0 0 1px rgba(124,58,237,.35); }
 
 .mealTop{
   display:flex;
@@ -414,18 +346,8 @@ button:hover{
   align-items: baseline;
   gap: 10px;
 }
+.mealName{ font-weight: 800; font-size: 14px; } .mealMeta{ color: var(--muted); font-size: 12px; }
 
-.mealName{
-  font-weight: 800;
-  font-size: 14px;
-}
-
-.mealMeta{
-  color: var(--muted);
-  font-size: 12px;
-}
-
-/* Food list */
 .foodList{
   margin: 10px 0 0;
   padding: 0;
@@ -433,7 +355,6 @@ button:hover{
   display: grid;
   gap: 8px;
 }
-
 .foodRow{
   display:flex;
   justify-content: space-between;
@@ -444,9 +365,7 @@ button:hover{
   border-radius: 14px;
   background: rgba(255,255,255,.04);
 }
-
 .foodLeft{ min-width: 0; }
-
 .foodName{
   font-weight: 800;
   font-size: 13px;
@@ -454,13 +373,11 @@ button:hover{
   overflow: hidden;
   text-overflow: ellipsis;
 }
-
 .foodMacros{
   color: var(--muted);
   font-size: 12px;
   margin-top: 2px;
 }
-
 .iconBtn{
   width: 36px;
   height: 36px;
@@ -472,18 +389,13 @@ button:hover{
   background: rgba(255,255,255,.06);
   font-weight: 900;
 }
+.iconBtn:hover{ border-color: rgba(239,68,68,.55); }
 
-.iconBtn:hover{
-  border-color: rgba(239,68,68,.55);
-}
-
-/* Divider */
 .divider{
   border-top: 1px solid var(--border);
   margin: 12px 0;
 }
 
-/* Progress bars (kcal) */
 .progressWrap{
   height: 10px;
   border-radius: 999px;
@@ -492,19 +404,9 @@ button:hover{
   overflow: hidden;
   margin-top: 10px;
 }
+.progressBar{ height: 100%; border-radius: 999px; } .progressOk{ background: rgba(34,197,94,.95); } .progressWarn{ background: rgba(245,158,11,.95); } .progressBad{ background: rgba(239,68,68,.95); }
 
-.progressBar{
-  height: 100%;
-  border-radius: 999px;
-}
-
-.progressOk{ background: rgba(34,197,94,.95); }
-.progressWarn{ background: rgba(245,158,11,.95); }
-.progressBad{ background: rgba(239,68,68,.95); }
-
-/* Day progress (overall kcal) */
 .dayProgress{ margin-top: 12px; }
-
 .dayProgressTop{
   display: flex;
   justify-content: space-between;
@@ -513,7 +415,6 @@ button:hover{
   font-size: 12px;
   opacity: 0.8;
 }
-
 .dayProgressWrap{
   height: 10px;
   border-radius: 999px;
@@ -522,32 +423,20 @@ button:hover{
   overflow: hidden;
   margin-top: 8px;
 }
+.dayProgressFill{ height: 100%; border-radius: 999px; } .fillOk{ background: rgba(34,197,94,.9); } .fillWarn{ background: rgba(245,158,11,.9); } .fillBad{ background: rgba(239,68,68,.9); }
 
-.dayProgressFill{
-  height: 100%;
-  border-radius: 999px;
-}
-
-.fillOk{ background: rgba(34,197,94,.9); }
-.fillWarn{ background: rgba(245,158,11,.9); }
-.fillBad{ background: rgba(239,68,68,.9); }
-
-/* Mini macro progress bars */
 .miniBars{
   display: grid;
   gap: 8px;
   margin-top: 10px;
 }
-
 .miniBarRow{
   display: grid;
   grid-template-columns: 70px 1fr 56px;
   gap: 10px;
   align-items: center;
 }
-
-.miniLabel{ font-size: 12px; opacity: .8; font-weight: 700; }
-.miniPct{ font-size: 12px; opacity: .8; text-align: right; font-weight: 800; }
+.miniLabel{ font-size: 12px; opacity: .8; font-weight: 700; } .miniPct{ font-size: 12px; opacity: .8; text-align: right; font-weight: 800; }
 
 .miniWrap{
   height: 8px;
@@ -556,41 +445,15 @@ button:hover{
   border: 1px solid rgba(255,255,255,.10);
   overflow: hidden;
 }
+.miniFill{ height: 100%; border-radius: 999px; } .fillProtein{ background: rgba(59,130,246,.95); } .fillCarbs{ background: rgba(245,158,11,.95); } .fillFat{ background: rgba(239,68,68,.95); }
 
-.miniFill{ height: 100%; border-radius: 999px; }
-
-.fillProtein{ background: rgba(59,130,246,.95); }
-.fillCarbs{ background: rgba(245,158,11,.95); }
-.fillFat{ background: rgba(239,68,68,.95); }
-/* ================= END FOOD LOG ================= */
-
-/* Consumed mini collapse inside cards (ha használod) */
-.cardHeaderBtn{
-  width: 100%;
-  display:flex;
-  align-items:center;
-  justify-content: space-between;
-  gap: 12px;
-  background: transparent;
-  border: none;
-  color: inherit;
-  padding: 0;
-  cursor: pointer;
-  text-align: left;
-}
-
-.miniCardCollapsible{
-  padding: 0;
-  overflow: hidden;
-}
-
-.miniCardHeaderBtn{
+/* Consumed collapse inside card */
+.miniCardCollapsible{ padding: 0; overflow: hidden; } .miniCardHeaderBtn{
   width: 100%;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
-
   padding: 12px;
   background: transparent;
   border: none;
@@ -598,43 +461,28 @@ button:hover{
   text-align: left;
   cursor: pointer;
 }
-
-.miniCardHeaderBtn:hover{
-  background: rgba(255,255,255,.03);
-}
-
-.chev{
-  opacity: .8;
-  font-weight: 900;
-  padding-top: 4px;
-}
+.miniCardHeaderBtn:hover{ background: rgba(255,255,255,.03); } .chev{ opacity: .8; font-weight: 900; padding-top: 4px; }
 
 .miniCollapse{
   overflow: hidden;
   max-height: 0;
   opacity: 0;
   transform: translateY(-4px);
-  transition: max-height 260ms ease, opacity 200ms ease, transform 200ms ease;
-}
-
-.miniCollapse.open{
+  transition: max-height 260ms ease, opacity 200ms ease, transform 200ms ease; } .miniCollapse.open{
   opacity: 1;
   transform: translateY(0);
   max-height: 520px;
 }
-
 .miniCollapseInner{
   border-top: 1px solid rgba(255,255,255,.10);
   padding: 12px;
 }
-
 .miniListTitle{
   font-size: 12px;
   opacity: .75;
   font-weight: 800;
   margin-bottom: 10px;
 }
-
 .consumedList{
   list-style: none;
   margin: 0;
@@ -642,40 +490,31 @@ button:hover{
   display: grid;
   gap: 12px;
 }
-
 .consumedRow{
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 10px;
-
   padding: 10px;
   border-radius: 14px;
   border: 1px solid rgba(255,255,255,.08);
   background: rgba(255,255,255,.04);
 }
+.consumedName{ font-weight: 800; font-size: 13px; } .consumedMacros{ font-size: 12px; opacity: .75; margin-top: 2px; }
 
-.consumedName{
-  font-weight: 800;
-  font-size: 13px;
-}
-
-.consumedMacros{
-  font-size: 12px;
-  opacity: .75;
-  margin-top: 2px;
-}
-
-.scanOverlay{
+/* ===== Scanner FIXED overlay (mobile-safe, no “szétesés” scrollnál) ===== */ .scanOverlay{
   position: fixed;
   inset: 0;
   background: rgba(0,0,0,.55);
   backdrop-filter: blur(6px);
-  display: grid;
-  place-items: center;
-  padding: 14px;
   z-index: 9999;
-}
+
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+
+  padding: 14px;
+  padding-top: calc(14px + env(safe-area-inset-top)); }
 
 .scanCard{
   width: min(520px, 100%);
@@ -684,6 +523,9 @@ button:hover{
   border-radius: 18px;
   padding: 14px;
   box-shadow: 0 18px 50px rgba(0,0,0,.35);
+
+  max-height: calc(100vh - 28px - env(safe-area-inset-top));
+  overflow: auto;
 }
 
 .scanTop{
@@ -695,81 +537,44 @@ button:hover{
 
 .scanBox{
   margin-top: 12px;
-  height: 240px;
+  width: 100%;
+  aspect-ratio: 4 / 3;
   border-radius: 16px;
   overflow: hidden;
   border: 1px solid rgba(255,255,255,.10);
   background: rgba(255,255,255,.03);
 }
-/* ===== Barcode scanner + barcode modal (Food log tetejére lockolva) ===== */
-.scanInline{
-  position: sticky;
-  top: 10px;
-  z-index: 60;
 
-  border: 1px solid rgba(255,255,255,.14);
-  border-radius: 16px;
-  background: rgba(10,15,25,.92);
-  backdrop-filter: blur(10px);
-  padding: 12px;
-  margin-bottom: 12px;
-
-  box-shadow: 0 16px 30px rgba(0,0,0,.35);
+/* Quagga video/canvas always fit */
+.scanBox video,
+.scanBox canvas{
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover;
+}
+.barcodeOverlay{
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: rgba(0,0,0,.55);
+  backdrop-filter: blur(6px);
+  display: grid;
+  place-items: center;
+  padding: 14px;
 }
 
-.scanInline.scanModal{
-  z-index: 70;
-  border-color: rgba(124,58,237,.35);
+.barcodeCard{
+  width: min(560px, 100%);
+  background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.04));
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 18px;
+  padding: 14px;
+  box-shadow: 0 18px 50px rgba(0,0,0,.35);
 }
 
-.scanTop{
+.barcodeTop{
   display:flex;
   justify-content: space-between;
   align-items:center;
-  gap: 12px;
-  margin-bottom: 10px;
+  gap:12px;
 }
-
-.scanBox{
-  width: 100%;
-  aspect-ratio: 4 / 3;
-  border-radius: 14px;
-  overflow: hidden;
-  border: 1px solid rgba(255,255,255,.12);
-  background: rgba(255,255,255,.06);
-}
-
-/* mobil finomhangolás */
-@media (max-width: 640px){
-  .scanInline{ top: 8px; }
-  .scanBox{ aspect-ratio: 1 / 1; } /* telefonon szebb */
-}
-.scanInlineBox video,
-.scanInlineBox canvas { width: 100% !important; height: 100% !important; object-fit: cover; }
-
-/* ===== Fix scanner, ne essen szét scrollnál mobilon ===== */
-.scanFixed{
-  position: sticky;
-  top: calc(10px + env(safe-area-inset-top));
-  z-index: 80;
-}
-
-.scanInlineBox{
-  width: 100%;
-  aspect-ratio: 1 / 1;
-  overflow: hidden;
-  border-radius: 14px;
-}
-
-.scanInlineBox video,
-.scanInlineBox canvas{
-  width: 100% !important;
-  height: 100% !important;
-  object-fit: cover !important;
-  display: block;
-}
-
-/* Quagga a video/canvas elemeket ide rakja */
-
-
-

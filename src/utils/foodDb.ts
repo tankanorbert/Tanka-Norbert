@@ -13,8 +13,7 @@ export function normalize(s: string) {
 }
 
 export function calcCalories(p: number, c: number, f: number) {
-  return Math.round(p * 4 + c * 4 + f * 9);
-}
+  return Math.round(p * 4 + c * 4 + f * 9); }
 
 export function calcFromPer100(per100: Per100, grams: number) {
   const k = grams / 100;
@@ -22,12 +21,10 @@ export function calcFromPer100(per100: Per100, grams: number) {
   const carbs = Math.round(per100.carbs * k);
   const fat = Math.round(per100.fat * k);
   const calories = calcCalories(protein, carbs, fat);
-  return { protein, carbs, fat, calories };
-}
+  return { protein, carbs, fat, calories }; }
 
 function f(id: string, name: string, protein: number, carbs: number, fat: number): FoodDbItem {
-  return { id, name, per100: { protein, carbs, fat } };
-}
+  return { id, name, per100: { protein, carbs, fat } }; }
 
 export const defaultFoodDb: FoodDbItem[] = [
   // --- Protein (lean) ---
@@ -80,5 +77,5 @@ export const defaultFoodDb: FoodDbItem[] = [
   f("cheese_light", "Cheese light", 30, 2, 10),
   f("beans", "Beans (cooked)", 9, 22, 1),
   f("lentils", "Lentils (cooked)", 9, 20, 0),
-  f("chickpeas", "Chickpeas (cooked)", 9, 27, 3),
-];
+  f("chickpeas", "Chickpeas (cooked)", 9, 27, 3), ];
+

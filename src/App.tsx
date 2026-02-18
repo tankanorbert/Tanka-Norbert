@@ -1,10 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import "./App.css";
+// src/App.tsx
+import { useEffect, useMemo, useRef, useState } from "react"; import "./App.css";
 
-import { calculateBMR, calculateTDEE, activityLevels } from "./utils/calorie";
-import { calculateMacros } from "./utils/macros";
-import FoodLogPanel from "./components/FoodLogPanel";
-//import BarcodeScanner from "./components/BarcodeScanner";
+import { calculateBMR, calculateTDEE, activityLevels } from "./utils/calorie"; import { calculateMacros } from "./utils/macros"; import FoodLogPanel from "./components/FoodLogPanel";
 
 import {
   saveData,
@@ -21,10 +18,12 @@ import {
 } from "./utils/storage";
 import type { FoodLog } from "./utils/storage";
 
+import { dict } from "./utils/i18n";
+import type { Lang } from "./utils/i18n";
+
 /**
  * Smooth collapsible helper:
- * - measures inner content height and returns maxHeight in px
- * - recalculates when open/deps change
+ * measures inner content height
  */
 function useCollapseHeight(open: boolean, deps: unknown[] = []) {
   const innerRef = useRef<HTMLDivElement | null>(null);
@@ -39,10 +38,8 @@ function useCollapseHeight(open: boolean, deps: unknown[] = []) {
     if (!el) return;
 
     const measure = () => setH(el.scrollHeight);
-
     measure();
 
-    // content can change after first render (fonts, images, async)
     const ro = new ResizeObserver(() => measure());
     ro.observe(el);
 
@@ -50,12 +47,22 @@ function useCollapseHeight(open: boolean, deps: unknown[] = []) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, ...deps]);
 
-  return { innerRef, maxHeightPx: `${h}px` };
-}
-
+  return { innerRef, maxHeightPx: `${h}px` }; }
 
 function App() {
-  // ----------- INPUTS -----------
+  // 🌍 Language
+  const [lang, setLang] = useState<Lang>(() => {
+    const v = localStorage.getItem("lang");
+    return v === "hu" || v === "en" ? v : "hu";
+  });
+
+  const t = dict[lang];
+
+  useEffect(() => {
+    localStorage.setItem("lang", lang);
+  }, [lang]);
+
+  // -------- INPUTS --------
   const [weight, setWeight] = useState(93);
   const [height, setHeight] = useState(176);
   const [age, setAge] = useState(25);
@@ -75,7 +82,7 @@ function App() {
   const caloriesPanelRef = useRef<HTMLDivElement | null>(null);
   const hasCalculatedOnce = useRef(false);
 
-  // ----------- DAY / LOG BY DATE -----------
+  // -------- DAY / LOG BY DATE --------
   const todayId = formatDateId(new Date());
   const [dateId, setDateId] = useState<string>(() => loadLastDateId() ?? todayId);
 
@@ -85,8 +92,6 @@ function App() {
   });
 
   const [savedDays, setSavedDays] = useState<string[]>(() => listSavedFoodLogDays());
-
-
 
   // Load saved inputs once
   useEffect(() => {
@@ -112,7 +117,7 @@ function App() {
     setSavedDays(listSavedFoodLogDays());
   }, [dateId, foodLog]);
 
-  // ----------- CALC HELPERS -----------
+  // -------- CALC HELPERS --------
   const maintenanceCalories = result ? Math.round(result) : null;
   const cutCalories = result ? Math.max(1200, Math.round(result - 500)) : null;
   const bulkCalories = result ? Math.round(result + 300) : null;
@@ -134,16 +139,16 @@ function App() {
 
   const selected = useMemo(() => {
     if (goal === "cut" && cutCalories && cutMacros) {
-      return { title: "Fat loss", calories: cutCalories, macros: cutMacros };
+      return { title: t.fat_loss, calories: cutCalories, macros: cutMacros };
     }
     if (goal === "bulk" && bulkCalories && bulkMacros) {
-      return { title: "Muscle gain", calories: bulkCalories, macros: bulkMacros };
+      return { title: t.muscle_gain, calories: bulkCalories, macros: bulkMacros };
     }
     if (maintenanceCalories && maintenanceMacros) {
-      return { title: "Maintenance", calories: maintenanceCalories, macros: maintenanceMacros };
+      return { title: t.maintenance, calories: maintenanceCalories, macros: maintenanceMacros };
     }
     return null;
-  }, [goal, cutCalories, cutMacros, bulkCalories, bulkMacros, maintenanceCalories, maintenanceMacros]);
+  }, [goal, cutCalories, cutMacros, bulkCalories, bulkMacros, maintenanceCalories, maintenanceMacros, t]);
 
   const foodTarget = useMemo(() => {
     return selected
@@ -163,15 +168,13 @@ function App() {
 
     saveData({ weight, height, age, gender, activity });
   }
-  
 
   // Calculate után: nyissa a Calories-t + első alkalommal scroll
   useEffect(() => {
     if (!result) return;
 
     setShowCalories(true);
-
-    // ha akarod: calculate után automatikusan nyíljon a Food log is
+    // opcionális: Food log is nyíljon ki
     // setShowFoodLog(true);
 
     if (!hasCalculatedOnce.current) {
@@ -185,26 +188,33 @@ function App() {
       }, 120);
     }
   }, [result]);
-  
 
-  // ----------- Smooth heights (measured) -----------
-  const inputsCollapse = useCollapseHeight(showInputs, [weight, height, age, gender, activity]);
-  const caloriesCollapse = useCollapseHeight(showCalories, [result, goal, maintenanceCalories, cutCalories, bulkCalories]);
-  const foodCollapse = useCollapseHeight(showFoodLog, [!!foodTarget, dateId, foodLog]);
+  // Smooth heights
+  const inputsCollapse = useCollapseHeight(showInputs, [weight, height, age, gender, activity, lang]);
+  const caloriesCollapse = useCollapseHeight(showCalories, [result, goal, maintenanceCalories, cutCalories, bulkCalories, lang]);
+  const foodCollapse = useCollapseHeight(showFoodLog, [!!foodTarget, dateId, foodLog, lang]);
 
   return (
     <div className="container">
-      <h1>Calorie Calculator</h1>
+      {/* Language switch */}
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
+        <select value={lang} onChange={(e) => setLang(e.target.value as Lang)} aria-label="Language">
+          <option value="hu">Magyar</option>
+          <option value="en">English</option>
+        </select>
+      </div>
+
+      <h1>{t.app_title}</h1>
 
       {/* ---------------- DAY ---------------- */}
       <div className="panel">
-        <h2>Day</h2>
+        <h2>{t.day_title}</h2>
 
         <div className="dayPanel">
           <div className="dayTopRow">
             <div className="dayQuick">
               <button className="chip" type="button" onClick={() => setDateId(formatDateId(new Date()))}>
-                Today
+                {t.today}
               </button>
 
               <button
@@ -216,19 +226,19 @@ function App() {
                   setDateId(formatDateId(d));
                 }}
               >
-                Yesterday
+                {t.yesterday}
               </button>
             </div>
 
             <label className="dayDate" style={{ marginBottom: 0 }}>
-              Select date
+              {t.select_date}
               <input type="date" value={dateId} onChange={(e) => setDateId(e.target.value)} />
             </label>
           </div>
 
           <div className="daySecondRow">
             <div className="muted">
-              Current day: <strong>{dateId}</strong>
+              {t.current_day}: <strong>{dateId}</strong>
             </div>
 
             <div className="dayActions">
@@ -241,7 +251,7 @@ function App() {
                   setSavedDays(listSavedFoodLogDays());
                 }}
               >
-                Clear this day
+                {t.clear_day}
               </button>
 
               <button
@@ -249,18 +259,17 @@ function App() {
                 type="button"
                 onClick={() => {
                   clearFoodLogByDate(dateId);
-                  const today = formatDateId(new Date());
-                  setDateId(today);
+                  setDateId(formatDateId(new Date()));
                 }}
               >
-                Clear + go Today
+                {t.clear_go_today}
               </button>
             </div>
           </div>
 
           {savedDays.length > 0 && (
             <div className="savedBox">
-              <strong>Saved days</strong>
+              <strong>{t.saved_days}</strong>
 
               <div className="pills" style={{ marginTop: 8 }}>
                 {savedDays.slice(0, 14).map((d) => (
@@ -276,14 +285,14 @@ function App() {
               </div>
 
               <div className="muted" style={{ marginTop: 8 }}>
-                Showing last {Math.min(14, savedDays.length)} saved days.
+                {t.showing_last(Math.min(14, savedDays.length))}
               </div>
             </div>
           )}
         </div>
       </div>
 
-      {/* ---------------- INPUTS (collapsible) ---------------- */}
+      {/* ---------------- INPUTS ---------------- */}
       <div className="panel">
         <button
           className="panelHeader"
@@ -291,7 +300,7 @@ function App() {
           aria-expanded={showInputs}
           onClick={() => setShowInputs((v) => !v)}
         >
-          <h2>Inputs</h2>
+          <h2>{t.inputs_title}</h2>
           <span className="chevron">{showInputs ? "▲" : "▼"}</span>
         </button>
 
@@ -299,42 +308,42 @@ function App() {
           <div ref={inputsCollapse.innerRef} className="collapseInner">
             <div className="grid2">
               <label>
-                Weight (kg)
+                {t.weight}
                 <input type="number" value={weight} onChange={(e) => setWeight(Number(e.target.value))} />
               </label>
 
               <label>
-                Height (cm)
+                {t.height}
                 <input type="number" value={height} onChange={(e) => setHeight(Number(e.target.value))} />
               </label>
 
               <label>
-                Age
+                {t.age}
                 <input type="number" value={age} onChange={(e) => setAge(Number(e.target.value))} />
               </label>
 
               <label>
-                Gender
+                {t.gender}
                 <select value={gender} onChange={(e) => setGender(e.target.value as any)}>
-                  <option value="male">Male</option>
-                  <option value="female">Female</option>
+                  <option value="male">{t.male}</option>
+                  <option value="female">{t.female}</option>
                 </select>
               </label>
 
               <label>
-                Activity
+                {t.activity}
                 <select value={activity} onChange={(e) => setActivity(Number(e.target.value))}>
-                  <option value={activityLevels.sedentary}>Sedentary</option>
-                  <option value={activityLevels.light}>Light</option>
-                  <option value={activityLevels.moderate}>Moderate</option>
-                  <option value={activityLevels.active}>Active</option>
-                  <option value={activityLevels.veryActive}>Very active</option>
+                  <option value={activityLevels.sedentary}>{t.sedentary ?? "Sedentary"}</option>
+                  <option value={activityLevels.light}>{t.light ?? "Light"}</option>
+                  <option value={activityLevels.moderate}>{t.moderate ?? "Moderate"}</option>
+                  <option value={activityLevels.active}>{t.active ?? "Active"}</option>
+                  <option value={activityLevels.veryActive}>{t.very_active ?? "Very active"}</option>
                 </select>
               </label>
 
               <div style={{ display: "flex", alignItems: "end" }}>
                 <button className="btnPrimary" type="button" onClick={calculate} style={{ width: "100%" }}>
-                  Calculate
+                  {t.calculate}
                 </button>
               </div>
             </div>
@@ -342,7 +351,7 @@ function App() {
         </div>
       </div>
 
-      {/* ---------------- CALORIES (header always visible) ---------------- */}
+      {/* ---------------- CALORIES ---------------- */}
       <div className="panel" ref={caloriesPanelRef}>
         <button
           className="panelHeader"
@@ -350,7 +359,7 @@ function App() {
           aria-expanded={showCalories}
           onClick={() => setShowCalories((v) => !v)}
         >
-          <h2>Calories</h2>
+          <h2>{t.calories_title}</h2>
           <span className="chevron">{showCalories ? "▲" : "▼"}</span>
         </button>
 
@@ -360,17 +369,17 @@ function App() {
               <>
                 <div className="kpi">
                   <div className="kpiCard">
-                    <div className="kpiTitle">Maintenance</div>
+                    <div className="kpiTitle">{t.maintenance}</div>
                     <div className="kpiValue">{maintenanceCalories} kcal</div>
                   </div>
 
                   <div className="kpiCard">
-                    <div className="kpiTitle">Fat loss</div>
+                    <div className="kpiTitle">{t.fat_loss}</div>
                     <div className="kpiValue">{cutCalories} kcal</div>
                   </div>
 
                   <div className="kpiCard">
-                    <div className="kpiTitle">Muscle gain</div>
+                    <div className="kpiTitle">{t.muscle_gain}</div>
                     <div className="kpiValue">{bulkCalories} kcal</div>
                   </div>
                 </div>
@@ -378,7 +387,7 @@ function App() {
                 <hr />
 
                 <label>
-                  Goal
+                  {t.goal}
                   <select
                     value={goal}
                     onChange={(e) => {
@@ -387,22 +396,20 @@ function App() {
                       saveGoal(g);
                     }}
                   >
-                    <option value="cut">Fat loss</option>
-                    <option value="maint">Maintenance</option>
-                    <option value="bulk">Muscle gain</option>
+                    <option value="cut">{t.fat_loss}</option>
+                    <option value="maint">{t.maintenance}</option>
+                    <option value="bulk">{t.muscle_gain}</option>
                   </select>
                 </label>
               </>
             ) : (
-              <p className="muted">
-                Press <strong>Calculate</strong> to see calories.
-              </p>
+              <p className="muted">{t.press_calculate_to_see}</p>
             )}
           </div>
         </div>
       </div>
 
-      {/* ---------------- FOOD LOG (header always visible) ---------------- */}
+      {/* ---------------- FOOD LOG ---------------- */}
       <div className="panel">
         <button
           className="panelHeader"
@@ -410,16 +417,16 @@ function App() {
           aria-expanded={showFoodLog}
           onClick={() => setShowFoodLog((v) => !v)}
         >
-          <h2>Food log</h2>
+          <h2>{t.foodlog_panel_title}</h2>
           <span className="chevron">{showFoodLog ? "▲" : "▼"}</span>
         </button>
 
         <div className={`collapse ${showFoodLog ? "open" : ""}`} style={{ maxHeight: foodCollapse.maxHeightPx }}>
           <div ref={foodCollapse.innerRef} className="collapseInner">
             {foodTarget ? (
-              <FoodLogPanel target={foodTarget} log={foodLog} onChange={(next) => setFoodLog(next)} />
+              <FoodLogPanel target={foodTarget} log={foodLog} onChange={(next) => setFoodLog(next)} lang={lang} t={t} />
             ) : (
-              <p className="muted">Calculate + choose a goal to enable the food log.</p>
+              <p className="muted">{t.press_calculate_to_see}</p>
             )}
           </div>
         </div>
@@ -429,3 +436,4 @@ function App() {
 }
 
 export default App;
+

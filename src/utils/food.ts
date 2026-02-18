@@ -1,10 +1,12 @@
 export type FoodItem = {
   id: string;
   name: string;
-  grams?: number;
-  protein: number;
-  carbs: number;
-  fat: number;
+  grams: number;
+  per100: {
+    protein: number;
+    carbs: number;
+    fat: number;
+  };
 };
 
 export function calcCaloriesFromMacros(p: number, c: number, f: number) {

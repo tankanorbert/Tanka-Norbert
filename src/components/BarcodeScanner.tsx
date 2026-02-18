@@ -1,5 +1,4 @@
-import { useEffect, useRef } from "react";
-import Quagga from "@ericblade/quagga2";
+import { useEffect, useRef } from "react"; import Quagga from "@ericblade/quagga2";
 
 type Props = {
   isActive: boolean;
@@ -15,6 +14,10 @@ export default function BarcodeScanner({ isActive, onDetected, onClose }: Props)
 
     const el = boxRef.current;
     if (!el) return;
+
+    // body scroll lock scanner alatt (mobil bugfix)
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
 
     let active = true;
 
@@ -44,42 +47,45 @@ export default function BarcodeScanner({ isActive, onDetected, onClose }: Props)
       const code = res?.codeResult?.code;
       if (!code) return;
 
-      // 1 scan után stop, nehogy duplázzon
       try {
         Quagga.offDetected(handler);
         Quagga.stop();
       } catch {}
 
       onDetected(String(code));
-      onClose();
+      // ne zárjuk itt automatikusan, a hívó dönti el
     };
 
     Quagga.onDetected(handler);
 
     return () => {
       active = false;
+      document.body.style.overflow = prevOverflow;
+
       try {
         Quagga.offDetected(handler);
         Quagga.stop();
       } catch {}
     };
-  }, [isActive, onDetected, onClose]);
+  }, [isActive, onDetected]);
 
   if (!isActive) return null;
 
   return (
-    <div className="scanInline scanFixed" role="region" aria-label="Barcode scanner">
-      <div className="scanTop">
-        <strong>Scan barcode</strong>
-        <button className="btnGhost" type="button" onClick={onClose}>
-          Close
-        </button>
-      </div>
+    <div className="scanOverlay" role="dialog" aria-modal="true">
+      <div className="scanCard">
+        <div className="scanTop">
+          <strong>Scan barcode</strong>
+          <button className="btnGhost" type="button" onClick={onClose}>
+            Close
+          </button>
+        </div>
 
-      <div className="scanBox scanInlineBox" ref={boxRef} />
+        <div className="scanBox scanInlineBox" ref={boxRef} />
 
-      <div className="note" style={{ marginTop: 8 }}>
-        Tartsd stabilan a kamerát a vonalkódon.
+        <div className="note" style={{ marginTop: 8 }}>
+          Tartsd stabilan a kamerát a vonalkódon.
+        </div>
       </div>
     </div>
   );
