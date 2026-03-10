@@ -93,6 +93,25 @@ function App() {
 
   const [savedDays, setSavedDays] = useState<string[]>(() => listSavedFoodLogDays());
 
+  useEffect(() => {
+  const onResize = () => {
+    window.dispatchEvent(new Event("resize"));
+  };
+
+  const t = setTimeout(() => {
+    onResize();
+  }, 150);
+
+  window.addEventListener("orientationchange", onResize);
+  window.addEventListener("pageshow", onResize);
+
+  return () => {
+    clearTimeout(t);
+    window.removeEventListener("orientationchange", onResize);
+    window.removeEventListener("pageshow", onResize);
+  };
+}, []);
+
   // Load saved inputs once
   useEffect(() => {
     const stored = loadData();
