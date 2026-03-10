@@ -35,7 +35,7 @@ function percent(consumed: number, target: number) {
   return target <= 0 ? 0 : Math.round((consumed / target) * 100);
 }
 
-export default function FoodLogPanel({ target, log, onChange, t, lang }: Props) {
+export default function FoodLogPanel({ target, log, onChange, t, lang: _lang }: Props) {
   const [isAddOpen, setIsAddOpen] = useState(false);
 
   const [meal, setMeal] = useState<MealKey>("breakfast");

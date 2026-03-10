@@ -1,31 +1,39 @@
+// src/utils/food.ts
+
 export type FoodItem = {
   id: string;
   name: string;
   grams: number;
-  per100: {
-    protein: number;
-    carbs: number;
-    fat: number;
-  };
+  protein: number;
+  carbs: number;
+  fat: number;
 };
 
-export function calcCaloriesFromMacros(p: number, c: number, f: number) {
-  return Math.round(p * 4 + c * 4 + f * 9);
+export function uid() {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID();
+  }
+
+  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
 export function totals(items: FoodItem[]) {
-  const protein = items.reduce((s, x) => s + x.protein, 0);
-  const carbs = items.reduce((s, x) => s + x.carbs, 0);
-  const fat = items.reduce((s, x) => s + x.fat, 0);
+  let protein = 0;
+  let carbs = 0;
+  let fat = 0;
+
+  for (const x of items) {
+    protein += x.protein ?? 0;
+    carbs += x.carbs ?? 0;
+    fat += x.fat ?? 0;
+  }
+
+  const calories = Math.round(protein * 4 + carbs * 4 + fat * 9);
 
   return {
     protein: Math.round(protein),
     carbs: Math.round(carbs),
     fat: Math.round(fat),
-    calories: calcCaloriesFromMacros(protein, carbs, fat),
+    calories,
   };
-}
-
-export function uid() {
-  return Math.random().toString(36).slice(2, 10);
 }
